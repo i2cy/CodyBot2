@@ -29,7 +29,7 @@ def get_chat_response(key, msg) -> tuple:
             stop=[" Human:", " Cody:"]
         )
         res = response['choices'][0]['text'].strip()
-        if response_sequence_header[1:] in res:
+        if response_sequence_header[1:-1] in res:
             res = res.split(response_sequence_header[1:])[-1]
         return res, True
     except Exception as e:

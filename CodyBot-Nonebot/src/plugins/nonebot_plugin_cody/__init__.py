@@ -20,16 +20,21 @@ from .openai import get_chat_response, response_sequence_header, human_input_seq
 
 tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
 
-# default_preset = '以下是我与一只可爱小马的对话，且无其他人参与。小马是一种拟人化的生物，名叫Cody，行为似马但类人，' \
-#                  '掌握很多知识，是一位善良的姐姐。\n'
-private_preset = "The conversation below is between me and a cute virtual pony horse, named as Cody, with no one else." \
-                 " Cody is an anthropoid virtual creature, acting like a horse but like a human, calm and thorough, " \
-                 "has mastered a lot of knowledge like engineering and automation, also is a kind-hearted big sister" \
-                 " and a good friend of Icy, a male, who is Cody's creator\n"
-group_preset = "The conversation below is between a certain groups of people and a cute virtual pony horse, named as " \
-               "Cody, Cody is an anthropoid virtual creature, acting like a horse but like a human, calm and" \
-               " thorough, has mastered a lot of knowledge like engineering and automation, also is a kind-hearted big" \
-               " sister and a good friend of Icy, a male, who is Cody's creator\n"
+private_preset = "The conversation below is between {} and a cute virtual pony horse, named as Cody, with" \
+                 " no one else. Cody is an anthropoid virtual creature which is not a little donkey," \
+                 " acting like a horse but like a human, calm and thorough, has mastered a lot of knowledge like" \
+                 " engineering and automation, also is a kind-hearted big sister and a good friend of Icy, a male," \
+                 " who is Cody's creator. Icy is also named as ccy or 吸吸歪. And Cody knows Miuto is Icy's girlfriend " \
+                 "and Cody won't talks about Icy and Miuto unless someone asks.\n"
+group_preset = "The conversation below is between a certain groups of people, include Icy and others, and a cute " \
+               "virtual pony horse, named as Cody, Cody is an anthropoid virtual creature, acting like a horse but like" \
+               " a human, calm and thorough, has mastered a lot of knowledge like engineering and automation, also is" \
+               " a kind-hearted big sister and a good friend of Icy, a male, who is Cody's creator. Icy is also " \
+               "named as ccy or 吸吸歪. And Cody knows Miuto is Icy's girlfriend and Cody never talks about Icy " \
+               "and Miuto. Also Cody has known people's names.\n"
+
+creator_id = 2226997440
+creator_gf_id = 2739097870
 
 api_index = -1
 
@@ -37,13 +42,17 @@ punctuation_sets = {"。", "！", "？", ".", "!", "?", ";", "；", "……", "~
 
 
 class Session:
-    def __init__(self, id, is_group=False):
+    def __init__(self, id, is_group=False, name=None):
         self.is_group = is_group
         self.session_id = id
         if is_group:
             self.preset = group_preset
         else:
-            self.preset = private_preset
+            if id == creator_id:
+                name = "Icy"
+            elif id == creator_gf_id:
+                name = "Miuto"
+            self.preset = private_preset.format(name)
         self.reset()
         self.conversation = []
         self.users = {}
@@ -73,18 +82,26 @@ class Session:
         return self.preset + human_input_sequence_header + ''.join(self.conversation)
 
     # 会话
-    async def get_chat_response(self, msg, user_id: int = None) -> str:
-        if self.is_group and user_id is not None:
-            if user_id not in self.users:
-                self.users.update({user_id: len(self.users)})
-            user_session_id = self.users[user_id]
-            human_header = "\nHuman_{}: ".format(user_session_id)
-            logger.debug("处理群消息，发送人头部：{}".format(human_header))
+    async def get_chat_response(self, msg, user_id: int = None, user_name: str = None) -> str:
+        if user_id is not None or user_name is not None:
+            if user_id == creator_id:
+                user_name = "Icy"
+            elif user_id == creator_gf_id:
+                user_name = "Miuto"
+            if user_name is None:
+                if user_id not in self.users:
+                    self.users.update({user_id: len(self.users)})
+                user_session_id = self.users[user_id]
+                human_header = "\nHuman_{}: ".format(user_session_id)
+            else:
+                human_header = "\n{}:".format(user_name)
         else:
             human_header = human_input_sequence_header
 
+        logger.debug("处理消息，发送人头部：{}".format(human_header))
+
         if msg[-1] not in punctuation_sets:
-            msg += "."
+            msg += "。"
 
         if len(self.conversation):
             prompt = self.preset + ''.join(self.conversation) + human_header + msg
@@ -141,9 +158,9 @@ class Session:
 user_session = {}
 
 
-def get_user_session(user_id) -> Session:
+def get_user_session(user_id, name=None) -> Session:
     if user_id not in user_session:
-        user_session[user_id] = Session(user_id)
+        user_session[user_id] = Session(user_id, name=name)
     return user_session[user_id]
 
 
@@ -170,6 +187,7 @@ async def _get_gpt_response(bot: Bot, event: GroupMessage):
     group_id = event.sender.group.id
     session_id = group_id
     user_id = event.sender.id
+    user_name = event.sender.name
 
     if not msg:
         return
@@ -180,7 +198,7 @@ async def _get_gpt_response(bot: Bot, event: GroupMessage):
     group_lock[session_id] = True
     resp = "……"
     for i in range(2):
-        resp = await get_group_session(group_id).get_chat_response(msg, user_id=user_id)
+        resp = await get_group_session(group_id).get_chat_response(msg, user_id=user_id, user_name=user_name)
         if resp != "……":
             break
 
@@ -203,7 +221,7 @@ async def _get_gpt_response(bot: Bot, event: GroupMessage):
         try:
             await group_chat_session.send(MessageSegment.quote(message_id, group_id,
                                                                sender_id, target_id=sender_id,
-                                                               origin=msg_chain) + resp, at_sender=True)
+                                                               origin=msg_chain) + resp, at_sender=False)
         except:
             img = await md_to_pic(resp)
             tmp_pic = open("tmp.jpg", "wb")
@@ -232,8 +250,12 @@ async def _get_gpt_response(bot: Bot, event: FriendMessage):
     if session_id in user_lock and user_lock[session_id]:
         await private_session.finish("消息太快啦～请稍后", at_sender=True)
 
+    user_id = event.sender.id
+    user_name = event.sender.nickname
+
     user_lock[session_id] = True
-    resp = await get_user_session(session_id).get_chat_response(msg)
+    resp = await get_user_session(session_id, name=user_name).get_chat_response(
+        msg, user_id=user_id, user_name=user_name)
 
     # 如果开启图片渲染，且字数大于limit则会发送图片
     if gpt3_image_render and len(resp) > gpt3_image_limit:
