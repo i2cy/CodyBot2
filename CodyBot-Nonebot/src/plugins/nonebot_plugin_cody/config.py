@@ -16,7 +16,6 @@ from nonebot.log import logger
 class Config(BaseSettings):
     # Your Config Here
     gpt3_api_key_path: str = "configs/gpt3_api.yml"
-    gpt3_command_prefix: str = '.'
     gpt3_need_at: bool = False
     gpt3_image_render: bool = False
     gpt3_image_limit: int = 100
@@ -37,7 +36,6 @@ global_config = driver.config
 config = Config.parse_obj(global_config)
 
 gpt3_api_key_path = config.gpt3_api_key_path
-gpt3_command_prefix = config.gpt3_command_prefix
 gpt3_need_at = config.gpt3_need_at
 gpt3_image_render = config.gpt3_image_render
 gpt3_image_limit = config.gpt3_image_limit
