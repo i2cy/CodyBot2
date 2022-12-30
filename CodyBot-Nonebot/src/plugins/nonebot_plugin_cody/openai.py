@@ -30,7 +30,11 @@ def get_chat_response(key, msg) -> tuple:
         )
         res = response['choices'][0]['text'].strip()
         if response_sequence_header[1:-1] in res:
-            res = res.split(response_sequence_header[1:])[-1]
+            res = res.split(response_sequence_header[1:-1])[-1]
+        elif response_sequence_header[1:-2] + "：" in res:
+            res = res.split(response_sequence_header[1:-2] + "：")[-1]
+        while len(res) and res[0] == " ":
+            res = res[1:]
         return res, True
     except Exception as e:
         return f"发生错误: {e}", False

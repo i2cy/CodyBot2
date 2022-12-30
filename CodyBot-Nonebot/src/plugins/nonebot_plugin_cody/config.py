@@ -22,6 +22,11 @@ class Config(BaseSettings):
     gpt3_image_limit: int = 100
     gpt3_max_tokens: int = 400
     gpt3_max_session_tokens: int = 2048
+    gpt3_session_forget_timeout: int = 3600
+    gpt3_cody_initial_mad_level_change_time_span: int = 600
+    gpt3_cody_mad_level_speedup_gamma: float = 0.5
+    gpt3_cody_mad_level_release_time_span_rate: float = 0.3
+    gpt3_cody_mad_level_change_msg_count_threshold: int = 25
 
     class Config:
         extra = "ignore"
@@ -38,6 +43,12 @@ gpt3_image_render = config.gpt3_image_render
 gpt3_image_limit = config.gpt3_image_limit
 gpt3_max_tokens = config.gpt3_max_tokens
 gpt3_max_session_tokens = config.gpt3_max_session_tokens
+gpt3_session_forget_timeout = config.gpt3_session_forget_timeout
+
+gpt3_cody_initial_mad_level_change_time_span = config.gpt3_cody_initial_mad_level_change_time_span
+gpt3_cody_mad_level_speedup_gamma: config.gpt3_cody_mad_level_speedup_gamma
+gpt3_cody_mad_level_release_time_span_rate: config.gpt3_cody_mad_level_release_time_span_rate
+gpt3_cody_mad_level_change_msg_count_threshold: config.gpt3_cody_mad_level_change_msg_count_threshold
 
 # 如果不存在则创建
 LOCAL = Path() / "configs"

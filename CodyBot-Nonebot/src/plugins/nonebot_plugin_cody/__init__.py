@@ -5,8 +5,8 @@
 # Filename: __init__
 # Created on: 2022/12/27
 
-import sys
 import asyncio
+import time
 from transformers import GPT2TokenizerFast
 from nonebot import on_command, on_message
 from nonebot.rule import to_me
@@ -25,18 +25,24 @@ private_preset = "The conversation below is between {} and a cute virtual pony h
                  " acting like a horse but like a human, calm and thorough, has mastered a lot of knowledge like" \
                  " engineering and automation, also is a kind-hearted big sister and a good friend of Icy, a male," \
                  " who is Cody's creator. Icy is also named as ccy or 吸吸歪. And Cody knows Miuto is Icy's girlfriend " \
-                 "and Cody won't talks about Icy and Miuto unless someone asks.\n"
-group_preset = "The conversation below is between a certain groups of people, include Icy and others, and a cute " \
+                 "and Cody won't talk about Icy and Miuto unless someone asks."
+group_preset = "The conversation below is between a certain groups of people, may or may not include Icy, and a cute " \
                "virtual pony horse, named as Cody, Cody is an anthropoid virtual creature, acting like a horse but like" \
                " a human, calm and thorough, has mastered a lot of knowledge like engineering and automation, also is" \
                " a kind-hearted big sister and a good friend of Icy, a male, who is Cody's creator. Icy is also " \
                "named as ccy or 吸吸歪. And Cody knows Miuto is Icy's girlfriend and Cody never talks about Icy " \
-               "and Miuto. Also Cody has known people's names.\n"
+               "and Miuto. Also Cody has known people's names."
+
+tired_preset_addon = " Cody is currently really tired of talking now, she needs some rest."
+exhausted_preset_addon = " And Cody is not willing to help anyone except Icy or Miuto."
+exhausted_and_mad_preset_addon = " And Cody is really mad about {} for talking too much, reject to talk."
+insult_preset_addon = " Cody will insults {} for keep talking."
 
 creator_id = 2226997440
 creator_gf_id = 2739097870
 
 api_index = -1
+invalid_api_count = 0
 
 punctuation_sets = {"。", "！", "？", ".", "!", "?", ";", "；", "……", "~", "~"}
 
@@ -52,24 +58,33 @@ class Session:
                 name = "Icy"
             elif id == creator_gf_id:
                 name = "Miuto"
+            else:
+                if name is not None:
+                    upper = name.upper()
+                    if "ICY" in upper:
+                        name = name.upper().replace("ICY", "FakeTheBuster")
+                    if "CCY" in upper:
+                        name = name.upper().replace("CCY", "FakeTheBuster")
+                    if "吸吸歪" in upper:
+                        name = name.upper().replace("吸吸歪", "FakeTheBuster")
+                    if "MIUTO" in upper:
+                        name = name.upper().replace("MIUTO", "FakeTheBuster")
             self.preset = private_preset.format(name)
-        self.reset()
         self.conversation = []
+        self.conversation_ts = []
         self.users = {}
+        self.mad_level = 0
+        self.msg_count = 0
 
     # 重置会话
     def reset(self):
         self.users = {}
         self.conversation = []
-
-    # 重置人格
-    def reset_preset(self):
-        self.preset = private_preset
+        self.conversation_ts = []
 
     # 设置人格
     def set_preset(self, msg: str):
         self.preset = msg.strip() + '\n'
-
         self.reset()
 
     # 导入用户会话
@@ -83,11 +98,22 @@ class Session:
 
     # 会话
     async def get_chat_response(self, msg, user_id: int = None, user_name: str = None) -> str:
+        global invalid_api_count
         if user_id is not None or user_name is not None:
             if user_id == creator_id:
                 user_name = "Icy"
             elif user_id == creator_gf_id:
                 user_name = "Miuto"
+            elif user_name is not None:
+                upper = user_name.upper()
+                if "ICY" in upper:
+                    user_name = user_name.upper().replace("ICY", "FakeTheBuster")
+                if "CCY" in upper:
+                    user_name = user_name.upper().replace("CCY", "FakeTheBuster")
+                if "吸吸歪" in upper:
+                    user_name = user_name.upper().replace("吸吸歪", "FakeTheBuster")
+                if "MIUTO" in upper:
+                    user_name = user_name.upper().replace("MIUTO", "FakeTheBuster")
             if user_name is None:
                 if user_id not in self.users:
                     self.users.update({user_id: len(self.users)})
@@ -104,45 +130,66 @@ class Session:
             msg += "。"
 
         if len(self.conversation):
-            prompt = self.preset + ''.join(self.conversation) + human_header + msg
+            # 检查时间
+            ts = self.conversation_ts[0]
+            while time.time() - ts > gpt3_session_forget_timeout:
+                logger.debug(
+                    f"最早的会话超过 {gpt3_session_forget_timeout} 秒，"
+                    f"删除最早的一次会话，执行忘记")
+                del self.conversation[0]
+                del self.conversation_ts[0]
+                ts = self.conversation_ts[0]
+
+            time_header = "\n({} seconds past)".format(
+                int(time.time() - self.conversation_ts[-1])
+            )
+            prompt = self.preset + ''.join(self.conversation) + time_header + human_header + msg
         else:
             prompt = self.preset + human_header + msg + response_sequence_header
+            time_header = ""
 
         token_len = len(tokenizer.encode(prompt))
         logger.debug("Using token: {}".format(token_len))
 
+        # 检查长度
         while token_len > gpt3_max_session_tokens - gpt3_max_tokens:
             logger.debug(
                 f"长度超过 {gpt3_max_session_tokens} - max_token = {gpt3_max_session_tokens - gpt3_max_tokens}，"
                 f"删除最早的一次会话")
             del self.conversation[0]
-            prompt = self.preset + ''.join(self.conversation) + msg
+            del self.conversation_ts[0]
+            prompt = self.preset + ''.join(self.conversation) + "\n({} seconds past)".format(
+                int(time.time() - self.conversation_ts[-1])
+            ) + human_header + msg
             token_len = len(tokenizer.encode(prompt))
 
         global api_index
         # 一个api失效时尝试下一个
-        ok = False
+        status = False
         for i in range(len(api_key_list)):
-
             api_index = (api_index + 1) % len(api_key_list)
             logger.debug(f"使用 API: {api_index + 1}")
-            res, ok = await asyncio.get_event_loop().run_in_executor(None, get_chat_response,
-                                                                     api_key_list[api_index],
-                                                                     prompt)
-            if ok:
-                if res.replace(" ", ""):
-                    break
+            res, status = await asyncio.get_event_loop().run_in_executor(None, get_chat_response,
+                                                                         api_key_list[api_index],
+                                                                         prompt)
+            if invalid_api_count:
+                valid_api_count = len(api_key_list) - invalid_api_count
+                logger.warning("当前有效API数量: {}/{}".format(valid_api_count, len(api_key_list)))
+                if valid_api_count <= 1 and status:
+                    res += "("
 
-            if ok:
+            if status:
                 break
             else:
                 logger.error(f"API {api_index + 1}: 出现错误")
+                invalid_api_count += 1
 
-        if ok:
+        if status:
             if not res.replace(" ", ""):
                 res = "……"
             logger.debug("AI 返回：{}".format(res))
-            self.conversation.append(f"{human_header}{msg}{response_sequence_header}{res}")
+            self.conversation.append(f"{time_header}{human_header}{msg}{response_sequence_header}{res}")
+            self.conversation_ts.append(time.time())
             logger.debug("当前对话（ID:{}）: {}".format(self.session_id, self.conversation))
         else:
             # 超出长度或者错误自动重置
