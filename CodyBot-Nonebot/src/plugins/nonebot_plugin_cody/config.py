@@ -23,8 +23,8 @@ class Config(BaseSettings):
     gpt3_max_session_tokens: int = 2048
     gpt3_session_forget_timeout: int = 3600
     gpt3_cody_initial_mad_level_change_time_span: int = 600
-    gpt3_cody_mad_level_speedup_gamma: float = 0.5
-    gpt3_cody_mad_level_release_time_span_rate: float = 0.3
+    gpt3_cody_mad_level_speedup_gamma: float = 0.7
+    gpt3_cody_mad_level_release_rate: float = 0.3
     gpt3_cody_mad_level_change_msg_count_threshold: int = 25
 
     class Config:
@@ -44,9 +44,9 @@ gpt3_max_session_tokens = config.gpt3_max_session_tokens
 gpt3_session_forget_timeout = config.gpt3_session_forget_timeout
 
 gpt3_cody_initial_mad_level_change_time_span = config.gpt3_cody_initial_mad_level_change_time_span
-gpt3_cody_mad_level_speedup_gamma: config.gpt3_cody_mad_level_speedup_gamma
-gpt3_cody_mad_level_release_time_span_rate: config.gpt3_cody_mad_level_release_time_span_rate
-gpt3_cody_mad_level_change_msg_count_threshold: config.gpt3_cody_mad_level_change_msg_count_threshold
+gpt3_cody_mad_level_speedup_gamma = config.gpt3_cody_mad_level_speedup_gamma
+gpt3_cody_mad_level_release_rate = config.gpt3_cody_mad_level_release_rate
+gpt3_cody_mad_level_change_msg_count_threshold = config.gpt3_cody_mad_level_change_msg_count_threshold
 
 # 如果不存在则创建
 LOCAL = Path() / "configs"
@@ -58,13 +58,7 @@ if not Path(gpt3_api_key_path).exists():
 with open(gpt3_api_key_path, 'r', encoding='utf-8') as f:
     api_key_list = yaml.load(f, Loader=yaml.FullLoader).get('api_keys')
 
-
 logger.info(f"加载 {len(api_key_list)}个 APIKeys")
-
-# 基本会话
-matcher_params = {'cmd': gpt3_command_prefix}
-if gpt3_need_at:
-    matcher_params['rule'] = to_me()
 
 # 其他命令
 need_at = {}

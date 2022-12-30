@@ -22,21 +22,28 @@ tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
 
 private_preset = "The conversation below is between {} and a cute virtual pony horse, named as Cody, with" \
                  " no one else. Cody is an anthropoid virtual creature which is not a little donkey," \
-                 " acting like a horse but like a human, calm and thorough, has mastered a lot of knowledge like" \
+                 " acting like a horse but like a human, has mastered a lot of knowledge like" \
                  " engineering and automation, also is a kind-hearted big sister and a good friend of Icy, a male," \
                  " who is Cody's creator. Icy is also named as ccy or 吸吸歪. And Cody knows Miuto is Icy's girlfriend " \
                  "and Cody won't talk about Icy and Miuto unless someone asks."
 group_preset = "The conversation below is between a certain groups of people, may or may not include Icy, and a cute " \
                "virtual pony horse, named as Cody, Cody is an anthropoid virtual creature, acting like a horse but like" \
-               " a human, calm and thorough, has mastered a lot of knowledge like engineering and automation, also is" \
+               " a human, has mastered a lot of knowledge like engineering and automation, also is" \
                " a kind-hearted big sister and a good friend of Icy, a male, who is Cody's creator. Icy is also " \
                "named as ccy or 吸吸歪. And Cody knows Miuto is Icy's girlfriend and Cody never talks about Icy " \
                "and Miuto. Also Cody has known people's names."
 
-tired_preset_addon = " Cody is currently really tired of talking now, she needs some rest."
-exhausted_preset_addon = " And Cody is not willing to help anyone except Icy or Miuto."
-exhausted_and_mad_preset_addon = " And Cody is really mad about {} for talking too much, reject to talk."
-insult_preset_addon = " Cody will insults {} for keep talking."
+mad_presets = [" Cody starts to feel a little bit of tired for talking or answering.",
+
+               " Cody is currently really tired of talking now, she needs some rest.",
+
+               " Cody is currently really tired of talking and not willing to help anyone except Icy or Miuto.",
+
+               " Cody is currently really tired of talking and not willing to help anyone. "
+               " And Cody is really mad about {} for talking too much, reject to talk.",
+
+               " Cody is currently really tired of talking and not willing to help anyone. And Cody is really mad"
+               " about {} for talking too much, reject to talk. And Cody will insults {} for keep talking."]
 
 creator_id = 2226997440
 creator_gf_id = 2739097870
@@ -53,6 +60,7 @@ class Session:
         self.session_id = id
         if is_group:
             self.preset = group_preset
+            self.name = "us"
         else:
             if id == creator_id:
                 name = "Icy"
@@ -69,10 +77,19 @@ class Session:
                         name = name.upper().replace("吸吸歪", "FakeTheBuster")
                     if "MIUTO" in upper:
                         name = name.upper().replace("MIUTO", "FakeTheBuster")
+            self.name = name
             self.preset = private_preset.format(name)
         self.conversation = []
         self.conversation_ts = []
+        self.conversation_mad_span_tokens = []
+        self.conversation_mad_span_ts = []
         self.users = {}
+        self.mad_time_span = gpt3_cody_initial_mad_level_change_time_span
+        self.mad_threshold = gpt3_cody_mad_level_change_msg_count_threshold
+        self.mad_speedup_rate = gpt3_cody_mad_level_speedup_gamma
+        self.mad_release_rate = gpt3_cody_mad_level_release_rate
+        self.mad_status_change_ts = 0
+
         self.mad_level = 0
         self.msg_count = 0
 
@@ -81,6 +98,79 @@ class Session:
         self.users = {}
         self.conversation = []
         self.conversation_ts = []
+
+    def emotional_change_of_preset(self) -> str:
+        time_span = self.mad_time_span * (self.mad_speedup_rate ** (self.mad_level + 1))
+        threshold = self.mad_threshold * (self.mad_speedup_rate ** (self.mad_level + 1))
+        release_threshold = self.mad_release_rate * threshold
+
+        # 检查时间
+        if len(self.conversation_mad_span_ts):
+            ts = self.conversation_mad_span_ts[0]
+
+            while time.time() - ts > self.mad_time_span:
+                del self.conversation_mad_span_ts[0]
+                del self.conversation_mad_span_tokens[0]
+                if len(self.conversation_mad_span_ts):
+                    ts = self.conversation_mad_span_ts[0]
+                else:
+                    break
+
+        criterion = 0
+        t_now = time.time()
+        for i, ele in enumerate(self.conversation_mad_span_ts):
+            if t_now - ele < time_span:
+                criterion += self.conversation_mad_span_tokens[i]
+        logger.debug("[ID: {}] emotional criterion value: {}".format(self.session_id, criterion))
+
+        # 检查阈值
+        time_span_full_filled = (time.time() - self.mad_status_change_ts) > time_span
+        even_madder = criterion > (gpt3_max_session_tokens * threshold)
+        even_madder &= time_span_full_filled
+        release_temper = criterion < (gpt3_max_session_tokens * release_threshold)
+        release_temper &= time_span_full_filled
+
+        if even_madder:
+            self.mad_level += 1
+            if self.mad_level > 5:
+                self.mad_level = 5
+            self.mad_status_change_ts = time.time()
+            logger.info("Cody in session ID: {} changed her temper up to {}".format(self.session_id, self.mad_level))
+
+        elif release_temper:
+            time_span = self.mad_time_span * (self.mad_speedup_rate ** (self.mad_level + 1))
+            while time.time() - self.mad_status_change_ts > time_span:
+                self.mad_status_change_ts += time_span
+                self.mad_level -= 1
+                if self.mad_level <= 0:
+                    break
+                time_span = self.mad_time_span * (self.mad_speedup_rate ** (self.mad_level + 1))
+            if self.mad_level < 0:
+                self.mad_level = 0
+            self.mad_status_change_ts = time.time()
+            logger.info("Cody in session ID: {} changed her temper down to {}".format(self.session_id, self.mad_level))
+
+        # 修改情绪
+        real_temper = self.mad_level - 1
+
+        if self.name in ("Icy", "Miuto"):
+            if self.mad_level > 2:
+                real_temper = 2
+
+        ret = self.preset
+
+        if real_temper >= 0:
+            addon = mad_presets[real_temper]
+
+            if real_temper == 3:
+                addon.format(self.name)
+            elif real_temper == 4:
+                addon.format(self.name, self.name)
+            ret += addon
+
+            logger.debug("[ID: {}], mad level: {}".format(self.session_id, self.mad_level))
+
+        return ret
 
     # 设置人格
     def set_preset(self, msg: str):
@@ -129,6 +219,9 @@ class Session:
         if msg[-1] not in punctuation_sets:
             msg += "。"
 
+        # 检查情绪
+        preset = self.emotional_change_of_preset()
+
         if len(self.conversation):
             # 检查时间
             ts = self.conversation_ts[0]
@@ -143,9 +236,9 @@ class Session:
             time_header = "\n({} seconds past)".format(
                 int(time.time() - self.conversation_ts[-1])
             )
-            prompt = self.preset + ''.join(self.conversation) + time_header + human_header + msg
+            prompt = preset + ''.join(self.conversation) + time_header + human_header + msg
         else:
-            prompt = self.preset + human_header + msg + response_sequence_header
+            prompt = preset + human_header + msg + response_sequence_header
             time_header = ""
 
         token_len = len(tokenizer.encode(prompt))
@@ -158,10 +251,13 @@ class Session:
                 f"删除最早的一次会话")
             del self.conversation[0]
             del self.conversation_ts[0]
-            prompt = self.preset + ''.join(self.conversation) + "\n({} seconds past)".format(
+            prompt = preset + ''.join(self.conversation) + "\n({} seconds past)".format(
                 int(time.time() - self.conversation_ts[-1])
             ) + human_header + msg
             token_len = len(tokenizer.encode(prompt))
+
+        self.conversation_mad_span_ts.append(time.time())
+        self.conversation_mad_span_tokens.append(token_len)
 
         global api_index
         # 一个api失效时尝试下一个

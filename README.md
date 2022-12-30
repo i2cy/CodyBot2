@@ -36,9 +36,9 @@ Cody是一只可爱的小马，Icy是她的创造者，由此Cody非常尊重Icy
    API tokens的消耗开支
  - Cody默认情况下在扣扣qun的对话中，会以各位的群昵称称呼，在私聊中则
    以备注或昵称称呼，对Icy及其它特殊人物会以本名称呼
- - （即将上线）Cody拥有一定的情绪机制，当对话频率超过一定阈值的时候会
-   感到疲惫，倘若继续对话，会使得Cody怠惰，甚至生气，开始辱骂尝试与她
-   聊天的人（从而节省tokens开支）
+ - Cody拥有一定的情绪机制，当对话频率超过一定阈值的时候会感到疲惫，倘
+   若继续对话，会使得Cody怠惰，甚至生气，开始辱骂尝试与她聊天的人（从
+   而节省tokens开支）
 
 ## 配置项
 
@@ -54,10 +54,15 @@ Cody是一只可爱的小马，Icy是她的创造者，由此Cody非常尊重Icy
     MIRAI_QQ=["0123456789"]                      # Mirai 上已经登录的 qq 号
     SUPERUSER=["2222222222"]                     # nonebot2 的超管(也可理解为bot的主人什么的)
     
-    gpt3_api_key_path = "configs/gpt3_api.yml"   # api文件的路径
-    gpt3_need_at = False                         # 是否需要@才触发命令
-    gpt3_image_render = False                    # 是否渲染为图片
-    gpt3_image_limit = 100                       # 长度超过多少才会渲染成图片
-    gpt3_max_tokens = 250                        # 最大返回值长度
-    gpt3_max_session_tokens = 1000               # 最大连续对话长度
-    gpt3_session_forget_timeout = 10800          # 会话从多少秒后开始忘记
+    gpt3_api_key_path = "configs/gpt3_api.yml"          # api文件的路径
+    gpt3_command_prefix = "cody"                        # 基本会话中的指令前缀
+    gpt3_need_at = False                                # 是否需要@才触发命令
+    gpt3_image_render = False                           # 是否渲染为图片
+    gpt3_image_limit = 100                              # 长度超过多少才会渲染成图片
+    gpt3_max_tokens = 250                               # 最大返回值长度
+    gpt3_max_session_tokens = 1000                      # 最大连续对话长度
+    gpt3_session_forget_timeout = 10800                 # 会话从多少秒后开始忘记
+    gpt3_cody_initial_mad_level_change_time_span = 600  # Cody情绪检测时间跨度（秒）
+    gpt3_cody_mad_level_speedup_gamma = 0.7             # 愤怒加速指数（越小越快）
+    gpt3_cody_mad_level_release_rate = 0.3              # 愤怒减轻比例（越小越不容易恢复）
+    gpt3_cody_mad_level_change_msg_count_threshold = 25 # 在检测时间跨度内的消息数量超过此阈值时改变情绪
