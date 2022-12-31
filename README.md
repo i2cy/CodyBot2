@@ -15,10 +15,10 @@ _✨ [Codybot2 查看机器人](https://github.com/i2cy/CodyBot2) ✨_
 </div>
 
 <p align="center">
-  <a href="https://github.com/i2cy/Nonebot-Plugin-LockingLock/master/LICENSE">
-    <img src="https://img.shields.io/github/license/i2cy/Nonebot-Plugin-LockingLock.svg" alt="license">
+  <a href="https://github.com/i2cy/CodyBot2/master/LICENSE">
+    <img src="https://img.shields.io/github/license/i2cy/CodyBot2.svg" alt="license">
   </a>
-  <img src="https://img.shields.io/badge/python-3.7+-blue.svg" alt="python">
+  <img src="https://img.shields.io/badge/python-3.8+-blue.svg" alt="python">
 </p>
 
 ## 简介
