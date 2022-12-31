@@ -231,7 +231,10 @@ class Session:
                     f"删除最早的一次会话，执行忘记")
                 del self.conversation[0]
                 del self.conversation_ts[0]
-                ts = self.conversation_ts[0]
+                if len(self.conversation_ts):
+                    ts = self.conversation_ts[0]
+                else:
+                    break
 
             time_header = "\n({} seconds past)".format(
                 int(time.time() - self.conversation_ts[-1])
