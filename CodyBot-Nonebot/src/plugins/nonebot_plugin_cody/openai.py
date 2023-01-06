@@ -25,12 +25,13 @@ def get_chat_response(key, msg, name) -> tuple:
             max_tokens=gpt3_max_tokens,
             top_p=1,
             frequency_penalty=0,
-            presence_penalty=0.6,
+            presence_penalty=0.7,
             stop=["{}:".format(name)]
         )
         res = response['choices'][0]['text'].strip()
-        if response_sequence_header[1:] in res:
+        if response_sequence_header[1:] in res or response_sequence_header[1:].replace(":", "：") in res:
             res = res.split(response_sequence_header[1:])[-1]
+            res = res.split(response_sequence_header[1:].replace(":", "："))[-1]
         while len(res) and res[0] == " ":
             res = res[1:]
         return res, True
