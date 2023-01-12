@@ -21,11 +21,11 @@ def get_chat_response(key, msg, name) -> tuple:
         response: dict = openai.Completion.create(
             model="text-davinci-003",
             prompt=msg,
-            temperature=0.7,
+            temperature=0.9,
             max_tokens=gpt3_max_tokens,
             top_p=1,
-            frequency_penalty=0,
-            presence_penalty=0.7,
+            frequency_penalty=0.5,
+            presence_penalty=0,
             stop=["{}:".format(name)]
         )
         res = response['choices'][0]['text'].strip()

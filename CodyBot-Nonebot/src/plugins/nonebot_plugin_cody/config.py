@@ -15,6 +15,7 @@ from nonebot.log import logger
 
 class Config(BaseSettings):
     # Your Config Here
+    gpt3_session_cache_path: str = ""
     gpt3_api_key_path: str = "configs/gpt3_api.yml"
     gpt3_need_at: bool = False
     gpt3_image_render: bool = False

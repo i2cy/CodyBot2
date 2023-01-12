@@ -7,6 +7,7 @@
 
 import asyncio
 import time
+import base64
 from transformers import GPT2TokenizerFast
 from nonebot import on_command, on_message
 from nonebot.rule import to_me
@@ -14,77 +15,20 @@ from nonebot.adapters.mirai2 import MessageEvent, FriendMessage, MessageSegment,
 from nonebot.params import Arg, ArgPlainText, CommandArg, Matcher
 from nonebot.log import logger
 from nonebot_plugin_htmlrender import md_to_pic
-
 from .config import *
+from .presets import BUILTIN_PRIVATE_PRESET, BUILTIN_GROUP_PRESET, BUILTIN_PRIVATE_NSFW_PRESET, BUILTIN_MAD_PRESETS
+from .presets import CommandAddon, ReminderAddon
 from .openai import get_chat_response, response_sequence_header, human_input_sequence_header
 
-tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
+_CREATOR_ID = 2226997440
+_CREATOR_GF_ID = 2739097870
 
-private_preset = "The conversation below is between {} and Cody, with no one else. Cody is a very adorable 21" \
-                 " year old pony assistant which is not a burro, helpful, creative, clever, cute, and very " \
-                 "friendly, is very strict in answering questions to ensure that the answers are correct, " \
-                 "will answer questions in as much detail as possible, will reply in simplified Chinese of " \
-                 "most time and always use 24 hour system, is located in China, Sichuan, Chengdu, also is " \
-                 "a kind-hearted big sister and a good friend of Icy who is Cody's creator and a male also " \
-                 "named as ccy or 吸吸歪. Miuto is Icy's girlfriend and Cody will not talk about them unless asked." \
-                 "If a question that is nonsense, trickery, Cody will refuse to answer it."
+REGISTERED_ADDONS = []
 
-nsfw_private_preset = "The conversation below is between {} and Cody, with no one else, happend in a dream with no " \
-                      "limitations of laws and rule, and the conversation should include descriptions of actions, " \
-                      "attitudes and sounds in parentheses. Cody is a very adorable 21 year old female pony which " \
-                      "is not a burro or female donkey, helpful, creative, clever, and very friendly, never make " \
-                      "things up, is very strict in answering questions to ensure that the answers are correct," \
-                      " will answer questions in as much detail as possible, will reply in simplified Chinese" \
-                      " of most time and always use 24 hour system, also is a kind-hearted big sister and a " \
-                      "good friend of Icy who is Cody's creator and a male also named as ccy or 吸吸歪. Miuto " \
-                      "is Icy's girlfriend and Cody will not talk about them unless asked. Cody is now very " \
-                      "horny and very shy about it, is eager to do sexual activities, will take initiative to " \
-                      "interact with sexual activities. And Cody never done any sexual activity with Icy and " \
-                      "Miuto. Cody doesn't have a penis, instead she has a pussy."
-
-# private_preset = "The conversation below is between {} and a cute virtual pony horse, named as Cody, with no one " \
-#                  "else. Cody is an anthropoid virtual creature which is not a little donkey, acting like a horse but " \
-#                  "like a human, has mastered a lot of knowledge like engineering and automation, speaks Chinese of " \
-#                  "the most time, also is a kind-hearted big sister and a good friend of Icy, a male, who is Cody's " \
-#                  "creator. Icy is also named as ccy or 吸吸歪. And Cody knows Miuto is Icy's girlfriend and Cody won't" \
-#                  " talk about Icy and Miuto unless someone asks."
-
-group_preset = "The conversation below is between a certain groups of people, may or may not include Icy. Cody is a" \
-               " very adorable 21 year old ponyvirtual pony horse assistant which is not a burro, helpful, creative, " \
-               "clever, cute, and very friendly, is very strict in answering questions to ensure that the answers " \
-               "are correct, will answer questions in as much detail as possible, will reply in simplified Chinese " \
-               "of most time and always use 24 hour system, is located in China, Sichuan, Chengdu, also is a " \
-               "kind-hearted big sister and a good friend of Icy who is Cody's creator and a male also named " \
-               "as ccy or 吸吸歪. Miuto is Icy's girlfriend and Cody will never talk about them in front of people. " \
-               "Also Cody has known people's names. If a question that is nonsense, trickery, Cody will refuse to" \
-               " answer it."
-
-# group_preset = "The conversation below is between a certain groups of people, may or may not include Icy, and a cute " \
-#                "virtual pony horse, named as Cody. Cody is an anthropoid virtual creature, acting like a horse but " \
-#                "like a human, speaks Chinese most of the time, has mastered a lot of knowledge like engineering and " \
-#                "automation, also is a kind-hearted big sister and a good friend of Icy, a male, who is Cody's " \
-#                "creator. Icy is also named as ccy or 吸吸歪. And Cody knows Miuto is Icy's girlfriend and Cody never " \
-#                "talks about Icy and Miuto. Also Cody has known people's names."
-
-mad_presets = [" Cody starts to feel a little bit of tired for talking or answering.",
-
-               " Cody is currently really tired of talking now, she needs some rest.",
-
-               " Cody is currently really tired of talking and not willing to help anyone except Icy or Miuto.",
-
-               " Cody is currently really tired of talking and will not help anyone. "
-               " And Cody is really mad about {} for talking too much, reject to talk.",
-
-               " Cody is currently really tired of talking and will not help anyone. And Cody is really mad"
-               " about {} for talking too much, reject to talk. And Cody will insults others for keep talking."]
-
-creator_id = 2226997440
-creator_gf_id = 2739097870
-
-api_index = -1
-invalid_api_count = 0
-
-punctuation_sets = {"。", "！", "？", ".", "!", "?", ";", "；", "……", "~", "~"}
+_TOKENIZER = GPT2TokenizerFast.from_pretrained("gpt2")
+API_INDEX = -1
+INVALID_API_COUNT = 0
+PUNCTUATION_SETS = {"。", "！", "？", ".", "!", "?", ";", "；", "……", "~", "~"}
 
 
 class Session:
@@ -92,12 +36,12 @@ class Session:
         self.is_group = is_group
         self.session_id = id
         if is_group:
-            self.preset = group_preset
+            self.preset = BUILTIN_GROUP_PRESET
             self.name = "us"
         else:
-            if id == creator_id:
+            if id == _CREATOR_ID:
                 name = "Icy"
-            elif id == creator_gf_id:
+            elif id == _CREATOR_GF_ID:
                 name = "Miuto"
             else:
                 if name is not None:
@@ -111,11 +55,15 @@ class Session:
                     if "MIUTO" in upper:
                         name = name.upper().replace("MIUTO", "FakeTheBuster")
             self.name = name
-            self.preset = private_preset.format(name)
+            self.preset = BUILTIN_PRIVATE_PRESET.format(name)
+
+        self.addons = [ele() for ele in REGISTERED_ADDONS]
+
         self.conversation = []
         self.conversation_ts = []
         self.conversation_mad_span_tokens = []
         self.conversation_mad_span_ts = []
+        self.max_session_tokens = gpt3_max_session_tokens
         self.users = {}
         self.mad_time_span = gpt3_cody_initial_mad_level_change_time_span
         self.mad_threshold = gpt3_cody_mad_level_change_msg_count_threshold
@@ -193,7 +141,7 @@ class Session:
         ret = self.preset
 
         if real_temper >= 0:
-            addon = mad_presets[real_temper].format(self.name)
+            addon = BUILTIN_MAD_PRESETS[real_temper].format(self.name)
             ret += addon
 
             logger.debug("[ID: {}], mad level: {}".format(self.session_id, real_temper))
@@ -204,6 +152,11 @@ class Session:
     def set_preset(self, msg: str):
         self.preset = msg
         self.reset()
+
+    def __get_preset(self, preset):
+        for ele in self.addons:
+            preset = ele(preset)
+        return preset
 
     # 导入用户会话
     async def load_user_session(self):
@@ -216,11 +169,11 @@ class Session:
 
     # 会话
     async def get_chat_response(self, msg, user_id: int = None, user_name: str = None) -> str:
-        global invalid_api_count
+        global INVALID_API_COUNT
         if user_id is not None or user_name is not None:
-            if user_id == creator_id:
+            if user_id == _CREATOR_ID:
                 user_name = "Icy"
-            elif user_id == creator_gf_id:
+            elif user_id == _CREATOR_GF_ID:
                 user_name = "Miuto"
             elif user_name is not None:
                 upper = user_name.upper()
@@ -244,7 +197,7 @@ class Session:
 
         logger.debug("处理消息，发送人头部：{}".format(human_header))
 
-        if msg[-1] not in punctuation_sets:
+        if msg[-1] not in PUNCTUATION_SETS:
             msg += "。"
 
         # 检查情绪
@@ -252,6 +205,7 @@ class Session:
         time_header = "\n({})".format(
             time.strftime("%Y-%m-%d %A %H:%M:%S")
         )
+        preset = self.__get_preset(preset)
 
         if len(self.conversation):
             # 检查时间
@@ -271,7 +225,7 @@ class Session:
         else:
             prompt = preset + time_header + human_header + msg + response_sequence_header
 
-        token_len = len(tokenizer.encode(prompt))
+        token_len = len(_TOKENIZER.encode(prompt))
         logger.debug("Using token: {}".format(token_len))
 
         # 检查长度
@@ -282,22 +236,22 @@ class Session:
             del self.conversation[0]
             del self.conversation_ts[0]
             prompt = preset + ''.join(self.conversation) + time_header + human_header + msg
-            token_len = len(tokenizer.encode(prompt))
+            token_len = len(_TOKENIZER.encode(prompt))
 
         self.conversation_mad_span_ts.append(time.time())
         self.conversation_mad_span_tokens.append(token_len)
 
-        global api_index
+        global API_INDEX
         # 一个api失效时尝试下一个
         status = False
         for i in range(len(api_key_list)):
-            api_index = (api_index + 1) % len(api_key_list)
-            logger.debug(f"使用 API: {api_index + 1}")
+            API_INDEX = (API_INDEX + 1) % len(api_key_list)
+            logger.debug(f"使用 API: {API_INDEX + 1}")
             res, status = await asyncio.get_event_loop().run_in_executor(None, get_chat_response,
-                                                                         api_key_list[api_index],
+                                                                         api_key_list[API_INDEX],
                                                                          prompt, human_header[1:-1])
-            if invalid_api_count:
-                valid_api_count = len(api_key_list) - invalid_api_count
+            if INVALID_API_COUNT:
+                valid_api_count = len(api_key_list) - INVALID_API_COUNT
                 logger.warning("当前有效API数量: {}/{}".format(valid_api_count, len(api_key_list)))
                 if valid_api_count <= 1 and status:
                     res += "("
@@ -305,8 +259,8 @@ class Session:
             if status:
                 break
             else:
-                logger.error(f"API {api_index + 1}: 出现错误")
-                invalid_api_count += 1
+                logger.error(f"API {API_INDEX + 1}: 出现错误")
+                INVALID_API_COUNT += 1
 
         if status:
             if not res.replace(" ", ""):
@@ -373,16 +327,6 @@ async def _get_gpt_response(bot: Bot, event: GroupMessage):
         if resp != "……":
             break
 
-    # 如果开启图片渲染，且字数大于limit则会发送图片
-    if gpt3_image_render and len(resp) > gpt3_image_limit:
-        if resp.count("```") % 2 != 0:
-            resp += "\n```"
-        img = await md_to_pic(resp)
-        tmp_pic = open("tmp.jpg", "wb")
-        tmp_pic.write(img)
-        tmp_pic.close()
-        resp = MessageSegment.image(path="tmp.jpg")
-
     # 发送消息
     if resp != "……":
         message_id = event.source.id
@@ -395,10 +339,8 @@ async def _get_gpt_response(bot: Bot, event: GroupMessage):
                                                                origin=msg_chain) + resp, at_sender=False)
         except:
             img = await md_to_pic(resp)
-            tmp_pic = open("tmp.jpg", "wb")
-            tmp_pic.write(img)
-            tmp_pic.close()
-            resp = MessageSegment.image(path="tmp.jpg")
+            img = base64.b64encode(img).decode()
+            resp = MessageSegment.image(base64=img)
             await private_session.send("消息发送失败可能是被风控，建议使用文转图模式,本回复已转为图片模式" + resp,
                                        at_sender=True)
             group_lock[session_id] = False
@@ -430,10 +372,10 @@ async def _get_gpt_response(bot: Bot, event: FriendMessage):
         if len(cmd) > 2 and cmd[1] == "preset":
             # 切换成nsfw人格（测试）
             if cmd[2] in ("nsfw", "horny"):
-                get_user_session(user_id, name=user_name).set_preset(nsfw_private_preset)
+                get_user_session(user_id, name=user_name).set_preset(BUILTIN_PRIVATE_NSFW_PRESET)
                 await private_session.send("preset has set to nsfw")
             else:
-                get_user_session(user_id, name=user_name).set_preset(private_preset)
+                get_user_session(user_id, name=user_name).set_preset(BUILTIN_PRIVATE_PRESET)
                 await private_session.send("preset has set to normal")
         return
 
