@@ -9,10 +9,10 @@ import asyncio
 from typing import Awaitable
 
 import openai
-from .config import gpt3_max_tokens
+from .config import *
 
-response_sequence_header = "\nCody:"
-human_input_sequence_header = "\nHuman:"
+CODY_HEADER = "\nCody:"
+ANONYMOUS_HUMAN_HEADER = "\nHuman:"
 
 
 def get_chat_response(key, msg, name) -> tuple:
@@ -21,17 +21,17 @@ def get_chat_response(key, msg, name) -> tuple:
         response: dict = openai.Completion.create(
             model="text-davinci-003",
             prompt=msg,
-            temperature=0.9,
-            max_tokens=gpt3_max_tokens,
+            temperature=0.7,
+            max_tokens=CODY_CONFIG.cody_gpt3_max_tokens,
             top_p=1,
-            frequency_penalty=0.5,
-            presence_penalty=0,
+            frequency_penalty=0.0,
+            presence_penalty=0.0,
             stop=["{}:".format(name)]
         )
         res = response['choices'][0]['text'].strip()
-        if response_sequence_header[1:] in res or response_sequence_header[1:].replace(":", "：") in res:
-            res = res.split(response_sequence_header[1:])[-1]
-            res = res.split(response_sequence_header[1:].replace(":", "："))[-1]
+        if CODY_HEADER[1:] in res or CODY_HEADER[1:].replace(":", "：") in res:
+            res = res.split(CODY_HEADER[1:])[-1]
+            res = res.split(CODY_HEADER[1:].replace(":", "："))[-1]
         while len(res) and res[0] == " ":
             res = res[1:]
         return res, True

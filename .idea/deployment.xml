@@ -1,8 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-  <component name="PublishConfigData" autoUpload="Always" serverName="icy@i2cy.tech:2203 password (3)" remoteFilesAllowedToDisappearOnAutoupload="false">
+  <component name="PublishConfigData" autoUpload="Always" serverName="CodyBot2 on I2APP" remoteFilesAllowedToDisappearOnAutoupload="false">
     <serverData>
+      <paths name="CodyBot2 on I2APP">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/home/icy/CloudProjects/CodyBot2" local="$PROJECT_DIR$" />
+          </mappings>
+        </serverdata>
+      </paths>
       <paths name="icy@i2cy.tech:22 password">
+        <serverdata>
+          <mappings>
+            <mapping local="$PROJECT_DIR$" web="/" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="icy@i2cy.tech:22 password (1)">
         <serverdata>
           <mappings>
             <mapping local="$PROJECT_DIR$" web="/" />
@@ -23,14 +37,14 @@
           </mappings>
         </serverdata>
       </paths>
-      <paths name="icy@i2cy.tech:2203 password (3)">
+      <paths name="pi@i2cy.tech:2205 password">
         <serverdata>
           <mappings>
-            <mapping deploy="/home/icy/CloudProjects/CodyBot2" local="$PROJECT_DIR$" />
+            <mapping local="$PROJECT_DIR$" web="/" />
           </mappings>
         </serverdata>
       </paths>
-      <paths name="pi@i2cy.tech:2205 password">
+      <paths name="pi@i2cy.tech:2205 password (2)">
         <serverdata>
           <mappings>
             <mapping local="$PROJECT_DIR$" web="/" />
