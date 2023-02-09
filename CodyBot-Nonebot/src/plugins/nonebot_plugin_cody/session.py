@@ -242,12 +242,12 @@ class Session:
 
     def generate_time_header_for_chat(self, addon_text=None):
         if addon_text is not None:
-            time_header = "\n[conversation time: {}. {}]".format(
+            time_header = "\n[{}. {}]".format(
                 time.strftime("%Y-%m-%d %H:%M:%S %A"),
                 addon_text
             )
         else:
-            time_header = "\n[conversation time: {}]".format(
+            time_header = "\n[{}]".format(
                 time.strftime("%Y-%m-%d %H:%M:%S %A")
             )
         return time_header
@@ -255,7 +255,7 @@ class Session:
     def generate_status_text_for_chat(self):
         status_header = "\n"
         for ele in self.addons:
-            status_header = ele.update_status_recall(status_header)
+            status_header = ele.update_status_callback(status_header)
         return status_header
 
     # 会话
@@ -295,9 +295,7 @@ class Session:
         preset = self.generate_preset_with_emotion()
 
         # 生成时间头
-        time_header = "\n[conversation time: {}]".format(
-            time.strftime("%Y-%m-%d %H:%M:%S %A")
-        )
+        time_header = self.generate_time_header_for_chat()
         # 生成状态头
         status_header = self.generate_status_text_for_chat()
 
@@ -378,7 +376,7 @@ class Session:
             self.conversation_ts.append(time.time())
             logger.debug("当前对话（ID:{}）: {}".format(self.session_id, self.conversation))
             for addon in self.addons:
-                res = addon.update_response_recall(res)
+                res = addon.update_response_callback(res)
         else:
             # 超出长度或者错误自动重置
             self.reset()
@@ -412,11 +410,14 @@ class BaseAddonManager:
     def set_subjects(self, subject_name):
         self.subject_name = subject_name
 
-    def update_status_recall(self, status_text: str) -> str:
+    def update_status_callback(self, status_text: str) -> str:
         return status_text
 
-    def update_response_recall(self, resp: str) -> str:
+    def update_response_callback(self, resp: str) -> str:
         return resp
+
+    def update_input_callback(self, input: str) -> str:
+        return input
 
 
 class CommandAddon(BaseAddonManager):
@@ -446,7 +447,7 @@ class ReminderAddon(BaseAddonManager):
                      "\"Human:晚上好。;Cody:晚上好呀。;Human:我明天早上9点有个会，帮我记一下。;Cody:好的，已经记下啦。 (SC|ADD|1|2019-08-20 " \
                      "9:00:00|attend a meeting^#)\". Cody will always use plain " \
                      "text when quoting instead of special action format. Never use special action format when " \
-                     "retelling or quoting."
+                     "retelling or quoting. "
 
         if session_class.is_group:
             super().__init__(session_class, "", name_format_count=0, priority=2)
@@ -456,7 +457,7 @@ class ReminderAddon(BaseAddonManager):
         self.reminders = {}
         self.alarm_id_header = "cody_reminder"
 
-    def update_status_recall(self, status_text: str) -> str:
+    def update_status_callback(self, status_text: str) -> str:
         if not self.session.is_group:
             reminder_sequence = ""
             reminder_ids = list(self.reminders.keys())
@@ -467,7 +468,7 @@ class ReminderAddon(BaseAddonManager):
                 for id in reminder_ids:
                     content = self.reminders[id]
                     alarm_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(content['alarm']))
-                    reminder_sequence += f"ID:{id},Time:{alarm_time},Event:{content['text']}; "
+                    reminder_sequence += f"ID:{id},Deadline:{alarm_time},Event:{content['text']}; "
 
             status_text += "\n"
             status_text += "(All schedules for {} in Cody's memory, and Cody will never use special action " \
@@ -563,7 +564,7 @@ class ReminderAddon(BaseAddonManager):
             self.session.conversation_ts.append(time.time())
             logger.debug("[session {}] 当前对话: {}".format(self.session.session_id, self.session.conversation))
             for addon in self.session.addons:
-                res = addon.update_response_recall(res)
+                res = addon.update_response_callback(res)
             feedback = res + warning_text
             self.reminders.pop(reminder_id)
         else:
@@ -586,7 +587,7 @@ class ReminderAddon(BaseAddonManager):
 
         await get_bot().send(event, feedback)
 
-    def update_response_recall(self, resp: str) -> str:
+    def update_response_callback(self, resp: str) -> str:
 
         if self.session.is_group:
             return resp

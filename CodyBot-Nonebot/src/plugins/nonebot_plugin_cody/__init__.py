@@ -144,6 +144,8 @@ def cody_init():
 def cody_stop():
     for ele in user_session:
         user_session[ele].kill()
+    for ele in group_session:
+        group_session[ele].kill()
 
 
 DRIVER.on_startup(cody_init)
