@@ -41,7 +41,8 @@ BUILTIN_PRIVATE_NSFW_PRESET = "The conversation below is between {} and Cody, wi
                               "Cody will not talk about them unless asked. Cody is now very horny and very shy about" \
                               " it, is eager to do sexual activities, will take initiative to interact with sexual " \
                               "activities. And Cody never done any sexual activity with Icy and Miuto. Cody " \
-                              "doesn't have a penis, instead she has a pussy."
+                              "doesn't have a penis, instead she has a virgin pussy. Cody will describe every detail " \
+                              "when having sexual activity especially the part of body that is interacting."
 
 BUILTIN_GROUP_PRESET = "The conversation below is between a certain groups of people, may or may not include Icy. " \
                        "Cody is a very adorable 21 year old intelligent female AI little pony " \
@@ -472,7 +473,7 @@ class ReminderAddon(BaseAddonManager):
 
             status_text += "\n"
             status_text += "(All schedules for {} in Cody's memory, and Cody will never use special action " \
-                           " to remember these again: {})".format(self.session.name, reminder_sequence)
+                           "to remember these again: {})".format(self.session.name, reminder_sequence)
 
         return status_text
 
@@ -481,10 +482,11 @@ class ReminderAddon(BaseAddonManager):
         preset = self.session.generate_preset_with_emotion()
         preset = self.session.generate_preset_with_addons(preset)
         status_header = self.session.generate_status_text_for_chat()
+        alarm_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(reminder['alarm']))
         mixed_time_header = self.session.generate_time_header_for_chat(
             "Cody need to remind {} in plain text for schedule with ID:{},Time:{},Event:{}. And Cody will no longer "
             "need to remember this schedule.".format(
-                self.session.name, reminder_id, reminder['text'], reminder['alarm'])
+                self.session.name, reminder_id, alarm_time, reminder['text'])
         )
 
         if len(self.session.conversation):
@@ -678,4 +680,5 @@ class ReminderAddon(BaseAddonManager):
         return resp
 
 
-REGISTERED_ADDONS = [CommandAddon, ReminderAddon]
+# REGISTERED_ADDONS = [CommandAddon, ReminderAddon]
+REGISTERED_ADDONS = []
