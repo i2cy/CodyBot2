@@ -424,11 +424,12 @@ class BaseAddonManager:
 class CommandAddon(BaseAddonManager):
 
     def __init__(self, session_class):
-        addon_text = "An special action is a text which must be placed separately in parentheses after Cody's reply. " \
-                     "Multiple actions can be placed at the same time separately. Special action formatted " \
-                     "text should always uses half-width characters and no space between parameters. Cody will " \
-                     "never try to ask others to use special action or even talk about it. Special action text can " \
-                     "only be added to reply in condition of below. Never quoting an special action or its usage."
+        addon_text = "An programmatic command is a text which must be placed separately in parentheses after Cody's " \
+                     "reply. Multiple actions can be placed at the same time separately. programmatic command " \
+                     "formatted text should always uses half-width characters and no space between parameters. Cody " \
+                     "will never try to ask others to use programmatic command or even talk about it. programmatic " \
+                     "command text can only be added to reply in condition of below. Never quoting an programmatic " \
+                     "command or its usage."
 
         if session_class.is_group:
             super().__init__(session_class, "", name_format_count=0, priority=2)
@@ -441,13 +442,15 @@ class ReminderAddon(BaseAddonManager):
     def __init__(self, session_class):
         addon_text = "Cody will remember a schedule when {} said, and never remember a schedule that has existed in " \
                      "Cody's memory. Cody can only use " \
-                     "special action formatted like \"(SC|<ADD/EDIT/REMOVE>|<unique integer schedule number>|<time of " \
+                     "programmatic command formatted like \"(SC|<ADD/EDIT/REMOVE>|<unique integer schedule " \
+                     "number>|<time of " \
                      "schedule>|<full description of event without subject>^#)\" to remember, edit or remove a " \
                      "schedule, time format " \
                      "like %Y-%m-%d %H:%M:%S. Conversation sample: " \
                      "\"Human:晚上好。;Cody:晚上好呀。;Human:我明天早上9点有个会，帮我记一下。;Cody:好的，已经记下啦。 (SC|ADD|1|2019-08-20 " \
                      "9:00:00|attend a meeting^#)\". Cody will always use plain " \
-                     "text when quoting instead of special action format. Never use special action format when " \
+                     "text when quoting instead of programmatic command format. Never use programmatic command format " \
+                     "when " \
                      "retelling or quoting. "
 
         if session_class.is_group:
@@ -472,7 +475,7 @@ class ReminderAddon(BaseAddonManager):
                     reminder_sequence += f"ID:{id},Deadline:{alarm_time},Event:{content['text']}; "
 
             status_text += "\n"
-            status_text += "(All schedules for {} in Cody's memory, and Cody will never use special action " \
+            status_text += "(All schedules for {} in Cody's memory, and Cody will never use programmatic command " \
                            "to remember these again: {})".format(self.session.name, reminder_sequence)
 
         return status_text
@@ -484,8 +487,8 @@ class ReminderAddon(BaseAddonManager):
         status_header = self.session.generate_status_text_for_chat()
         alarm_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(reminder['alarm']))
         mixed_time_header = self.session.generate_time_header_for_chat(
-            "Cody need to remind {} in plain text for schedule with ID:{},Time:{},Event:{}. And Cody will no longer "
-            "need to remember this schedule.".format(
+            "Cody need to remind {} gently in plain text for schedule with ID:{},Time:{},Event:{}. And Cody will no "
+            "longer need to remember this schedule.".format(
                 self.session.name, reminder_id, alarm_time, reminder['text'])
         )
 
@@ -680,5 +683,5 @@ class ReminderAddon(BaseAddonManager):
         return resp
 
 
-# REGISTERED_ADDONS = [CommandAddon, ReminderAddon]
-REGISTERED_ADDONS = []
+REGISTERED_ADDONS = [CommandAddon, ReminderAddon]
+# REGISTERED_ADDONS = []
