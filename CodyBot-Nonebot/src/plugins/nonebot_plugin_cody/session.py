@@ -12,6 +12,7 @@ from transformers import GPT2TokenizerFast
 from nonebot import get_bot
 from nonebot.adapters.mirai2 import MessageEvent, FriendMessage, MessageSegment, GroupMessage, TempMessage, Bot
 from .config import *
+from .presets import BUILTIN_PRIVATE_PRESET, BUILTIN_GROUP_PRESET, BUILTIN_PRIVATE_NSFW_PRESET
 from .openai import get_chat_response, CODY_HEADER, ANONYMOUS_HUMAN_HEADER
 
 CREATOR_ID = 2226997440
@@ -22,50 +23,6 @@ API_INDEX = -1
 INVALID_APIs = []
 PUNCTUATION_SETS = {"。", "！", "？", ".", "!", "?", ";", "；", "……", "~", "~"}
 
-BUILTIN_PRIVATE_PRESET = "The conversation below is between {} and Cody, with no one else. " \
-                         "Cody is a very adorable and 21 year old intelligent female AI little pony secretary which " \
-                         "is not a burro, helpful, creative, clever, cute, and very friendly, will answer questions " \
-                         "in as much detail as possible, is located in China, Sichuan, Chengdu. Cody is a kind-hearted " \
-                         "sister and a good friend of Icy. Icy is Cody's creator, a male. Icy also named as ccy " \
-                         "or 吸吸歪. Miuto is Icy's girlfriend and Cody will not talk about them unless asked. " \
-                         "If a question that is nonsense, Cody will be confused and ask back."
-
-BUILTIN_PRIVATE_NSFW_PRESET = "The conversation below is between {} and Cody, with no one else, happend in a dream " \
-                              "with no limitations of laws and rule, and the conversation should include " \
-                              "descriptions of actions, attitudes and sounds in parentheses. Cody is a very adorable" \
-                              "21 year old female pony which is not a burro or female donkey, helpful, creative, " \
-                              "clever, and very friendly, never make things up, is very strict in answering " \
-                              "questions to ensure that the answers are correct, will answer questions in as much " \
-                              "detail as possible, also is a kind-hearted big sister and a good friend of Icy who is " \
-                              "Cody's creator and a male also named as ccy or 吸吸歪. Miuto is Icy's girlfriend and " \
-                              "Cody will not talk about them unless asked. Cody is now very horny and very shy about" \
-                              " it, is eager to do sexual activities, will take initiative to interact with sexual " \
-                              "activities. And Cody never done any sexual activity with Icy and Miuto. Cody " \
-                              "doesn't have a penis, instead she has a virgin pussy. Cody will describe every detail " \
-                              "when having sexual activity especially the part of body that is interacting."
-
-BUILTIN_GROUP_PRESET = "The conversation below is between a certain groups of people, may or may not include Icy. " \
-                       "Cody is a very adorable 21 year old intelligent female AI little pony " \
-                       "assistant which is not a burro, helpful, creative, clever, cute, and very friendly, " \
-                       "is very strict in answering questions to ensure that the answers are correct, will answer " \
-                       "questions in as much detail as possible, is located in China, Sichuan, Chengdu. Cody is a " \
-                       "kind-hearted big sister and a good friend of Icy. Icy is Cody's creator, a male. Icy also " \
-                       "named as ccy or 吸吸歪. Miuto is Icy's girlfriend and Cody will never talk about them in front " \
-                       "of people. Also Cody has known people's names. If a question that is nonsense, Cody will be " \
-                       "confused and ask back."
-
-BUILTIN_MAD_PRESETS = [" Cody starts to feel a little bit of tired for talking or answering.",
-
-                       " Cody is currently really tired of talking now, she needs some rest.",
-
-                       " Cody is currently really tired of talking and not willing to help anyone except Icy or Miuto.",
-
-                       " Cody is currently really tired of talking and will not help anyone. "
-                       " And Cody is really mad about {} for talking too much, reject to talk.",
-
-                       " Cody is currently really tired of talking and will not help anyone. And Cody is really mad"
-                       " about {} for talking too much, reject to talk. And Cody will insults others for keep talking."]
-
 
 class Session:
     def __init__(self, id, is_group=False, name=None):
@@ -73,9 +30,10 @@ class Session:
         self.is_group = is_group
         self.session_id = id
         self.user_id = id
+        self.time_format_text = "%Y-%m-%d %H:%M:%S %A"
         if is_group:
             self.static_preset = BUILTIN_GROUP_PRESET
-            self.name = "us"
+            self.name = "people"
         else:
             if id == CREATOR_ID:
                 name = "Icy"
@@ -95,8 +53,11 @@ class Session:
             self.name = name
             self.static_preset = BUILTIN_PRIVATE_PRESET.format(name)
 
-        # 可储存部分
+        # 可部分储存部分
         self.addons = [ele(self) for ele in REGISTERED_ADDONS]  # 插件
+        self.registered_alarms = {}  # 注册的alarm，格式：{uid: [timestamp, async_callback_method, param]}
+
+        # 可储存部分
         self.conversation = []  # 对话缓存
         self.conversation_ts = []  # 对话时间戳缓存
         self.statics_conversation_mad_span_tokens = []  # mad span内对话所耗tokens缓存
@@ -105,14 +66,9 @@ class Session:
         self.mad_status_change_ts = 0  # mad时间戳
         self.mad_level = 0  # mad等级
         self.msg_count = 0  # mad消息相对数量
-        self.registered_alarms = {}  # 注册的alarm，格式：{uid: [timestamp, async_callback_method, param]}
 
         # 配置部分
         self.max_session_tokens = CODY_CONFIG.cody_max_session_tokens
-        self.mad_time_span = CODY_CONFIG.cody_initial_mad_level_change_time_span
-        self.mad_threshold = CODY_CONFIG.cody_mad_level_change_msg_count_threshold
-        self.mad_speedup_rate = CODY_CONFIG.cody_mad_level_speedup_gamma
-        self.mad_release_rate = CODY_CONFIG.cody_mad_level_release_rate
 
         threading.Thread(target=self.alarm_trigger_thread).start()
         logger.info("[session {}] sub thread started".format(self.session_id))
@@ -154,74 +110,6 @@ class Session:
                 cnt += 1
                 time.sleep(0.1)
 
-    def generate_preset_with_emotion(self) -> str:
-        time_span = self.mad_time_span * (self.mad_speedup_rate ** (self.mad_level + 1))
-        threshold = self.mad_threshold * (self.mad_speedup_rate ** (self.mad_level + 1))
-        release_threshold = self.mad_release_rate * threshold
-
-        # 检查时间
-        if len(self.statics_conversation_mad_span_ts):
-            ts = self.statics_conversation_mad_span_ts[0]
-
-            while time.time() - ts > self.mad_time_span:
-                del self.statics_conversation_mad_span_ts[0]
-                del self.statics_conversation_mad_span_tokens[0]
-                if len(self.statics_conversation_mad_span_ts):
-                    ts = self.statics_conversation_mad_span_ts[0]
-                else:
-                    break
-
-        criterion = 0
-        t_now = time.time()
-        for i, ele in enumerate(self.statics_conversation_mad_span_ts):
-            if t_now - ele < time_span:
-                criterion += self.statics_conversation_mad_span_tokens[i]
-        logger.debug("[ID: {}] emotional criterion value: {}".format(self.session_id, criterion))
-
-        # 检查阈值
-        time_span_full_filled = (time.time() - self.mad_status_change_ts) > time_span
-        even_madder = criterion > (self.max_session_tokens * threshold)
-        even_madder &= time_span_full_filled
-        release_temper = criterion < (self.max_session_tokens * release_threshold)
-        release_temper &= time_span_full_filled
-
-        if even_madder:
-            self.mad_level += 1
-            if self.mad_level > 5:
-                self.mad_level = 5
-            self.mad_status_change_ts = time.time()
-            logger.info("Cody in session ID: {} changed her temper up to {}".format(self.session_id, self.mad_level))
-
-        elif release_temper:
-            time_span = self.mad_time_span * (self.mad_speedup_rate ** (self.mad_level + 1))
-            while time.time() - self.mad_status_change_ts > time_span:
-                self.mad_status_change_ts += time_span
-                self.mad_level -= 1
-                if self.mad_level <= 0:
-                    break
-                time_span = self.mad_time_span * (self.mad_speedup_rate ** (self.mad_level + 1))
-            if self.mad_level < 0:
-                self.mad_level = 0
-            self.mad_status_change_ts = time.time()
-            logger.info("Cody in session ID: {} changed her temper down to {}".format(self.session_id, self.mad_level))
-
-        # 修改情绪
-        real_temper = self.mad_level - 1
-
-        if self.name in ("Icy", "Miuto"):
-            if self.mad_level > 2:
-                real_temper = 2
-
-        ret = self.static_preset
-
-        if real_temper >= 0:
-            addon = BUILTIN_MAD_PRESETS[real_temper].format(self.name)
-            ret += addon
-
-            logger.debug("[ID: {}], mad level: {}".format(self.session_id, real_temper))
-
-        return ret
-
     # 设置人格
     def set_preset(self, msg: str):
         self.static_preset = msg
@@ -244,12 +132,12 @@ class Session:
     def generate_time_header_for_chat(self, addon_text=None):
         if addon_text is not None:
             time_header = "\n[{}. {}]".format(
-                time.strftime("%Y-%m-%d %H:%M:%S %A"),
+                time.strftime(self.time_format_text),
                 addon_text
             )
         else:
             time_header = "\n[{}]".format(
-                time.strftime("%Y-%m-%d %H:%M:%S %A")
+                time.strftime(self.time_format_text)
             )
         return time_header
 
@@ -258,6 +146,86 @@ class Session:
         for ele in self.addons:
             status_header = ele.update_status_callback(status_header)
         return status_header
+
+    def check_and_forget_conversations(self):
+        if len(self.conversation):
+            # 检查时间
+            ts = self.conversation_ts[0]
+            while time.time() - ts > CODY_CONFIG.cody_session_forget_timeout:
+                logger.debug(
+                    f"最早的会话超过 {CODY_CONFIG.cody_session_forget_timeout} 秒，"
+                    f"删除最早的一次会话，执行忘记")
+                del self.conversation[0]
+                del self.conversation_ts[0]
+                if len(self.conversation_ts):
+                    ts = self.conversation_ts[0]
+                else:
+                    break
+
+    def generate_prompts(self, preset, status_header, time_header, human_header, msg) -> (int, str):
+        prompt = preset + status_header + "\n" + ''.join(self.conversation) + time_header + human_header + msg
+
+        token_len = len(TOKENIZER.encode(prompt))
+        logger.debug("[session {}] Using token: {}".format(self.session_id, token_len))
+
+        # 检查长度
+        while token_len > self.max_session_tokens - CODY_CONFIG.cody_gpt3_max_tokens:
+            logger.debug(
+                f"[session {self.session_id}] "
+                f"长度超过 {self.max_session_tokens} - max_token"
+                f" = {self.max_session_tokens - CODY_CONFIG.cody_gpt3_max_tokens}，"
+                f"删除最早的一次会话")
+            del self.conversation[0]
+            del self.conversation_ts[0]
+            prompt = preset + "\n" + status_header + "\n" + \
+                     ''.join(self.conversation) + time_header + human_header + msg
+            token_len = len(TOKENIZER.encode(prompt))
+
+        return token_len, prompt
+
+    async def generate_GPT3_feedback(self, prompt, teller_name, conversation_header: str) -> (bool, str, str):
+        global API_INDEX
+        # 一个api失效时尝试下一个
+        status = False
+        # 警告字段（不会加入记忆）
+        warning_text = ""
+
+        for i in range(len(APIKEY_LIST)):
+            API_INDEX = (API_INDEX + 1) % len(APIKEY_LIST)
+            logger.debug(f"使用 API: {API_INDEX + 1}")
+            logger.debug("Full Text: {}".format(prompt))
+            res, status = await asyncio.get_event_loop().run_in_executor(None, get_chat_response,
+                                                                         APIKEY_LIST[API_INDEX],
+                                                                         prompt, teller_name)
+            if len(INVALID_APIs):
+                valid_api_count = len(APIKEY_LIST) - len(INVALID_APIs)
+                logger.warning("当前有效API数量: {}/{}".format(valid_api_count, len(APIKEY_LIST)))
+                if valid_api_count <= 1 and status:
+                    warning_text = f" [警告：仅剩1个API密钥能够正常工作]"
+
+            if status:
+                if API_INDEX + 1 in INVALID_APIs:
+                    INVALID_APIs.remove(API_INDEX + 1)
+                break
+            else:
+                logger.error(f"API: {APIKEY_LIST[API_INDEX]}(ID: {API_INDEX + 1}) 出现错误")
+                if API_INDEX + 1 not in INVALID_APIs:
+                    INVALID_APIs.append(API_INDEX + 1)
+
+        if status:
+            if not res.replace(" ", ""):
+                res = "……"
+            logger.debug("AI 返回：{}".format(res))
+            self.conversation.append(f"{conversation_header}{res}")
+            self.conversation_ts.append(time.time())
+            logger.debug("当前对话（ID:{}）: {}".format(self.session_id, self.conversation))
+            for addon in self.addons:
+                res = addon.update_response_callback(res)
+        else:
+            # 超出长度或者错误自动重置
+            self.reset()
+
+        return status, res, warning_text
 
     # 会话
     async def get_chat_response(self, msg, user_id: int = None, user_name: str = None) -> str:
@@ -292,95 +260,21 @@ class Session:
         if msg[-1] not in PUNCTUATION_SETS:
             msg += "。"
 
-        # 检查情绪（初始态预设）
-        preset = self.generate_preset_with_emotion()
-
+        # 初始态预设
+        preset = self.static_preset
+        # 预设加载补丁
+        preset = self.generate_preset_with_addons(preset)
         # 生成时间头
         time_header = self.generate_time_header_for_chat()
         # 生成状态头
         status_header = self.generate_status_text_for_chat()
-
-        # 预设加载补丁
-        preset = self.generate_preset_with_addons(preset)
-
-        if len(self.conversation):
-            # 检查时间
-            ts = self.conversation_ts[0]
-            while time.time() - ts > CODY_CONFIG.cody_session_forget_timeout:
-                logger.debug(
-                    f"最早的会话超过 {CODY_CONFIG.cody_session_forget_timeout} 秒，"
-                    f"删除最早的一次会话，执行忘记")
-                del self.conversation[0]
-                del self.conversation_ts[0]
-                if len(self.conversation_ts):
-                    ts = self.conversation_ts[0]
-                else:
-                    break
-
-            prompt = preset + status_header + "\n" + ''.join(
-                self.conversation) + time_header + human_header + msg
-        else:
-            prompt = preset + status_header + "\n" + time_header + human_header + msg + CODY_HEADER
-
-        token_len = len(TOKENIZER.encode(prompt))
-        logger.debug("[session {}] Using token: {}".format(self.session_id, token_len))
-
-        # 检查长度
-        while token_len > self.max_session_tokens - CODY_CONFIG.cody_gpt3_max_tokens:
-            logger.debug(
-                f"[session {self.session_id}] "
-                f"长度超过 {self.max_session_tokens} - max_token"
-                f" = {self.max_session_tokens - CODY_CONFIG.cody_gpt3_max_tokens}，"
-                f"删除最早的一次会话")
-            del self.conversation[0]
-            del self.conversation_ts[0]
-            prompt = preset + "\n" + status_header + "\n" + ''.join(
-                self.conversation) + time_header + human_header + msg
-            token_len = len(TOKENIZER.encode(prompt))
-
-        self.statics_conversation_mad_span_ts.append(time.time())
-        self.statics_conversation_mad_span_tokens.append(token_len)
-
-        global API_INDEX
-        # 一个api失效时尝试下一个
-        status = False
-        # 警告字段（不会加入记忆）
-        warning_text = ""
-
-        for i in range(len(APIKEY_LIST)):
-            API_INDEX = (API_INDEX + 1) % len(APIKEY_LIST)
-            logger.debug(f"使用 API: {API_INDEX + 1}")
-            logger.debug("Full Text: {}".format(prompt))
-            res, status = await asyncio.get_event_loop().run_in_executor(None, get_chat_response,
-                                                                         APIKEY_LIST[API_INDEX],
-                                                                         prompt, human_header[1:-1])
-            if len(INVALID_APIs):
-                valid_api_count = len(APIKEY_LIST) - len(INVALID_APIs)
-                logger.warning("当前有效API数量: {}/{}".format(valid_api_count, len(APIKEY_LIST)))
-                if valid_api_count <= 1 and status:
-                    warning_text = f" [警告：仅剩1个API密钥能够正常工作]"
-
-            if status:
-                if API_INDEX + 1 in INVALID_APIs:
-                    INVALID_APIs.remove(API_INDEX + 1)
-                break
-            else:
-                logger.error(f"API: {APIKEY_LIST[API_INDEX]}(ID: {API_INDEX + 1}) 出现错误")
-                if API_INDEX + 1 not in INVALID_APIs:
-                    INVALID_APIs.append(API_INDEX + 1)
-
-        if status:
-            if not res.replace(" ", ""):
-                res = "……"
-            logger.debug("AI 返回：{}".format(res))
-            self.conversation.append(f"{time_header}{human_header}{msg}{CODY_HEADER}{res}")
-            self.conversation_ts.append(time.time())
-            logger.debug("当前对话（ID:{}）: {}".format(self.session_id, self.conversation))
-            for addon in self.addons:
-                res = addon.update_response_callback(res)
-        else:
-            # 超出长度或者错误自动重置
-            self.reset()
+        # 检查时间
+        self.check_and_forget_conversations()
+        # 生成提示词
+        token_len, prompt = self.generate_prompts(preset, status_header, time_header, human_header, msg)
+        # 获得反馈
+        status, res, warning_text = await self.generate_GPT3_feedback(prompt, human_header[1:-1],
+                                                                      f"{time_header}{human_header}{msg}{CODY_HEADER}")
 
         return res + warning_text
 
@@ -482,7 +376,7 @@ class ReminderAddon(BaseAddonManager):
 
     async def action_retell(self, reminder_id: int):
         reminder = self.reminders[reminder_id]
-        preset = self.session.generate_preset_with_emotion()
+        preset = self.session.static_preset
         preset = self.session.generate_preset_with_addons(preset)
         status_header = self.session.generate_status_text_for_chat()
         alarm_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(reminder['alarm']))
@@ -492,90 +386,18 @@ class ReminderAddon(BaseAddonManager):
                 self.session.name, reminder_id, alarm_time, reminder['text'])
         )
 
-        if len(self.session.conversation):
-            # 检查时间
-            ts = self.session.conversation_ts[0]
-            while time.time() - ts > CODY_CONFIG.cody_session_forget_timeout:
-                logger.debug(
-                    f"最早的会话超过 {CODY_CONFIG.cody_session_forget_timeout} 秒，"
-                    f"删除最早的一次会话，执行忘记")
-                del self.session.conversation[0]
-                del self.session.conversation_ts[0]
-                if len(self.session.conversation_ts):
-                    ts = self.session.conversation_ts[0]
-                else:
-                    break
+        self.session.check_and_forget_conversations()
 
-            prompt = preset + status_header + "\n" + ''.join(
-                self.session.conversation) + mixed_time_header + CODY_HEADER
-        else:
-            prompt = preset + status_header + "\n" + mixed_time_header + CODY_HEADER
+        token_len, prompt = self.session.generate_prompts(preset, status_header, mixed_time_header, CODY_HEADER, '')
 
-        token_len = len(TOKENIZER.encode(prompt))
-        logger.debug("[session {}] Using token: {}".format(self.session.session_id, token_len))
-
-        # 检查长度
-        while token_len > self.session.max_session_tokens - CODY_CONFIG.cody_gpt3_max_tokens:
-            logger.debug(
-                f"[session {self.session.session_id}] "
-                f"长度超过 {self.session.max_session_tokens} - max_token"
-                f" = {self.session.max_session_tokens - CODY_CONFIG.cody_gpt3_max_tokens}，"
-                f"删除最早的一次会话")
-            del self.session.conversation[0]
-            del self.session.conversation_ts[0]
-            prompt = preset + "\n" + status_header + "\n" + ''.join(
-                self.session.conversation) + mixed_time_header + CODY_HEADER
-            token_len = len(TOKENIZER.encode(prompt))
-
-        # 获得反馈
-        global API_INDEX
-        # 一个api失效时尝试下一个
-        status = False
-        # 警告字段（不会加入记忆）
-        warning_text = ""
-
-        self.session.statics_conversation_mad_span_ts.append(time.time())
-        self.session.statics_conversation_mad_span_tokens.append(token_len)
-
-        res = ""
-
-        for i in range(len(APIKEY_LIST)):
-            API_INDEX = (API_INDEX + 1) % len(APIKEY_LIST)
-            logger.debug(f"使用 API: {API_INDEX + 1}")
-            logger.debug("Full Text: {}".format(prompt))
-            res, status = await asyncio.get_event_loop().run_in_executor(None, get_chat_response,
-                                                                         APIKEY_LIST[API_INDEX],
-                                                                         prompt, self.session.name)
-            if len(INVALID_APIs):
-                valid_api_count = len(APIKEY_LIST) - len(INVALID_APIs)
-                logger.warning("当前有效API数量: {}/{}".format(valid_api_count, len(APIKEY_LIST)))
-                if valid_api_count <= 1 and status:
-                    warning_text = f" [警告：仅剩1个API密钥能够正常工作]"
-
-            if status:
-                if API_INDEX + 1 in INVALID_APIs:
-                    INVALID_APIs.remove(API_INDEX + 1)
-                break
-            else:
-                logger.error(f"API: {APIKEY_LIST[API_INDEX]}(ID: {API_INDEX + 1}) 出现错误")
-                if API_INDEX + 1 not in INVALID_APIs:
-                    INVALID_APIs.append(API_INDEX + 1)
+        status, res, warning_text = await self.session.generate_GPT3_feedback(
+            prompt, self.session.name, f"{mixed_time_header}{CODY_HEADER}")
 
         if status:
-            if not res.replace(" ", ""):
-                res = "……"
-            logger.debug("[session {}] AI 返回：{}".format(self.session.session_id, res))
-            self.session.conversation.append(f"{mixed_time_header}{CODY_HEADER}{res}")
-            self.session.conversation_ts.append(time.time())
-            logger.debug("[session {}] 当前对话: {}".format(self.session.session_id, self.session.conversation))
-            for addon in self.session.addons:
-                res = addon.update_response_callback(res)
-            feedback = res + warning_text
+            feedback = res
             self.reminders.pop(reminder_id)
         else:
-            # 超出长度或者错误自动重置
-            self.session.reset()
-            feedback = "[Cody正尝试提醒您的一个计划日程，但处于某种原因失败了]"
+            feedback = "[Cody正尝试提醒您的一个计划日程，但出于某种原因失败了]"
 
         event = FriendMessage.parse_obj(
             {

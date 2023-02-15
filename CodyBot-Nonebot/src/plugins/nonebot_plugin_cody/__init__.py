@@ -10,7 +10,7 @@ from nonebot import on_command, on_message, get_bot
 from nonebot.adapters.mirai2 import MessageEvent, FriendMessage, MessageSegment, GroupMessage, TempMessage, Bot
 from nonebot_plugin_htmlrender import md_to_pic
 from .config import *
-from .session import BUILTIN_PRIVATE_PRESET, BUILTIN_GROUP_PRESET, BUILTIN_PRIVATE_NSFW_PRESET, BUILTIN_MAD_PRESETS
+from .session import BUILTIN_PRIVATE_PRESET, BUILTIN_GROUP_PRESET, BUILTIN_PRIVATE_NSFW_PRESET
 from .session import CREATOR_ID
 from .openai import get_chat_response, CODY_HEADER, ANONYMOUS_HUMAN_HEADER
 from .session import Session

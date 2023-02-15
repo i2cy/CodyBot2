@@ -21,10 +21,6 @@ class Config(BaseSettings):
     cody_gpt3_max_tokens: int = 400
     cody_max_session_tokens: int = 2048
     cody_session_forget_timeout: int = 3600
-    cody_initial_mad_level_change_time_span: int = 600
-    cody_mad_level_speedup_gamma: float = 0.7
-    cody_mad_level_release_rate: float = 0.3
-    cody_mad_level_change_msg_count_threshold: int = 5
 
     class Config:
         extra = "ignore"
