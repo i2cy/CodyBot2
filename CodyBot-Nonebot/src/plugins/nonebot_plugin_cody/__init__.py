@@ -6,35 +6,37 @@
 # Created on: 2022/12/27
 
 import base64
-from nonebot import on_command, on_message, get_bot
-from nonebot.adapters.mirai2 import MessageEvent, FriendMessage, MessageSegment, GroupMessage, TempMessage, Bot
+from nonebot import on_message
+from nonebot.adapters.mirai2 import FriendMessage, MessageSegment, GroupMessage, TempMessage, Bot
 from nonebot_plugin_htmlrender import md_to_pic
+
+from .addons import CommandAddon, ReminderAddon
 from .config import *
-from .session import BUILTIN_PRIVATE_PRESET, BUILTIN_GROUP_PRESET, BUILTIN_PRIVATE_NSFW_PRESET
+from .presets import BUILTIN_PRIVATE_PRESET, BUILTIN_GROUP_PRESET, BUILTIN_PRIVATE_NSFW_PRESET
 from .session import CREATOR_ID
 from .openai import get_chat_response, CODY_HEADER, ANONYMOUS_HUMAN_HEADER
 from .session import Session
 
+REGISTERED_ADDONS = [CommandAddon, ReminderAddon]
+
 user_session = {}
+group_session = {}
+
+user_lock = {}
+group_lock = {}
 
 
 def get_user_session(user_id, name=None) -> Session:
     if user_id not in user_session:
-        user_session[user_id] = Session(user_id, name=name)
+        user_session[user_id] = Session(user_id, name=name, addons=REGISTERED_ADDONS)
     return user_session[user_id]
-
-
-group_session = {}
 
 
 def get_group_session(group_id) -> Session:
     if group_id not in group_session:
-        group_session[group_id] = Session(group_id, is_group=True)
+        group_session[group_id] = Session(group_id, is_group=True, addons=REGISTERED_ADDONS)
     return group_session[group_id]
 
-
-user_lock = {}
-group_lock = {}
 
 # 基本群聊（连续对话）
 group_chat_session = on_message(priority=50, block=False, rule=to_me())
