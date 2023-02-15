@@ -36,9 +36,6 @@ Cody是一只可爱的小马，Icy是她的创造者，由此Cody非常尊重Icy
    API tokens的消耗开支
  - Cody默认情况下在扣扣qun的对话中，会以各位的群昵称称呼，在私聊中则
    以备注或昵称称呼，对Icy及其它特殊人物会以本名称呼
- - Cody拥有一定的情绪机制，当对话频率超过一定阈值的时候会感到疲惫，倘
-   若继续对话，会使得Cody怠惰，甚至生气，开始辱骂尝试与她聊天的人（从
-   而节省tokens开支）
  - 正在测试中的功能：私聊日程管理和提醒（预计与微软TODO接口同步）
 
 ## 配置项
@@ -60,7 +57,3 @@ Cody是一只可爱的小马，Icy是她的创造者，由此Cody非常尊重Icy
     cody_gpt3_max_tokens = 500                          # 最大返回值长度
     cody_max_session_tokens = 2000                      # 最大连续对话长度
     cody_session_forget_timeout = 43200                 # 会话从多少秒后开始忘记
-    cody_initial_mad_level_change_time_span = 300       # Cody情绪检测时间跨度（秒）
-    cody_mad_level_speedup_gamma = 0.7                  # 愤怒加速指数（越小越快）
-    cody_mad_level_release_rate = 0.3                   # 愤怒减轻比例（越小越不容易恢复）
-    cody_mad_level_change_msg_count_threshold = 2       # 在检测时间跨度内的消息数量（相对）超过此阈值时改变情绪
