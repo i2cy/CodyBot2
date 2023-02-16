@@ -13,11 +13,12 @@ from nonebot_plugin_htmlrender import md_to_pic
 from .addons import CommandAddon, ReminderAddon
 from .config import *
 from .presets import BUILTIN_PRIVATE_PRESET, BUILTIN_GROUP_PRESET, BUILTIN_PRIVATE_NSFW_PRESET
-from .session import CREATOR_ID
+from .session import CREATOR_ID, CREATOR_GF_ID
 from .openai import get_chat_response, CODY_HEADER, ANONYMOUS_HUMAN_HEADER
 from .session import Session
 
 REGISTERED_ADDONS = [CommandAddon, ReminderAddon]
+# REGISTERED_ADDONS = []
 
 user_session = {}
 group_session = {}
@@ -49,6 +50,25 @@ async def _get_gpt_response(bot: Bot, event: GroupMessage):
     session_id = group_id
     user_id = event.sender.id
     user_name = event.sender.name
+
+    # 检查指令
+    if len(msg) > 5 and msg[:5] == "i2cmd":
+        if user_id in (CREATOR_ID, CREATOR_GF_ID):
+            cmd = msg.split(" ")
+            if len(cmd) > 2 and cmd[1] == "memory":
+                # 重置会话
+                if cmd[2] in ("reset", "Reset", "RESET"):
+                    get_group_session(group_id).reset()
+                    await group_chat_session.send("[memory has been cleared and reset]")
+                else:
+                    await group_chat_session.send("[unknown command]")
+            else:
+                await group_chat_session.send("[unknown command]")
+        else:
+            await group_chat_session.finish("[permission denied]", at_sender=True)
+
+        return
+
     logger.info(f"[group session {session_id}] GPT对话输入 \"{msg}\"")
 
     if not msg:
@@ -111,10 +131,10 @@ async def _get_gpt_response(bot: Bot, event: FriendMessage):
             # 切换成nsfw人格（测试）
             if cmd[2] in ("nsfw", "horny"):
                 get_user_session(user_id, name=user_name).set_preset(BUILTIN_PRIVATE_NSFW_PRESET)
-                await private_session.send("[preset has set to nsfw]")
+                await private_session.send("[preset has set to nsfw, all conversation cleared]")
             else:
                 get_user_session(user_id, name=user_name).set_preset(BUILTIN_PRIVATE_PRESET)
-                await private_session.send("[preset has set to normal]")
+                await private_session.send("[preset has set to normal, all conversation cleared]")
         return
 
     logger.info(f"[session {session_id}] GPT对话输入 \"{msg}\"")
