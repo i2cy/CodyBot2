@@ -73,8 +73,8 @@ class ReminderAddon(BaseAddonManager):
                      "number>|<time of " \
                      "schedule>|<full description of event without subject>^#]\" to remember, edit or remove a " \
                      "schedule, time format " \
-                     "like %Y-%m-%d %H:%M:%S. Conversation sample: " \
-                     "\"Human:晚上好。;Cody:晚上好呀。;Human:我明天早上9点有个会，帮我记一下。;Cody:[SC|ADD|1|2019-08-20 " \
+                     "like %Y-%m-%d %H:%M:%S. Conversation example: " \
+                     "\"Human:嗨。;Cody:你好呀。;Human:我明天早上9点有个会，帮我记一下。;Cody:[SC|ADD|1|2019-08-20 " \
                      "9:00:00|attend a meeting^#]好的，已经记下啦。\". Cody will always use plain " \
                      "text when quoting instead of programmatic command format. Never use programmatic command format " \
                      "when " \
