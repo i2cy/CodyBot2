@@ -2,6 +2,13 @@
 <project version="4">
   <component name="PublishConfigData" autoUpload="Always" serverName="CodyBot on I2APP" remoteFilesAllowedToDisappearOnAutoupload="false">
     <serverData>
+      <paths name="AliOS">
+        <serverdata>
+          <mappings>
+            <mapping local="$PROJECT_DIR$" web="/" />
+          </mappings>
+        </serverdata>
+      </paths>
       <paths name="CodyBot on I2APP">
         <serverdata>
           <mappings>
@@ -9,28 +16,14 @@
           </mappings>
         </serverdata>
       </paths>
-      <paths name="icy@i2cy.tech:22 password">
+      <paths name="GTEM on RK3399">
         <serverdata>
           <mappings>
             <mapping local="$PROJECT_DIR$" web="/" />
           </mappings>
         </serverdata>
       </paths>
-      <paths name="icy@i2cy.tech:22 password (1)">
-        <serverdata>
-          <mappings>
-            <mapping local="$PROJECT_DIR$" web="/" />
-          </mappings>
-        </serverdata>
-      </paths>
-      <paths name="pi@i2cy.tech:2205 password">
-        <serverdata>
-          <mappings>
-            <mapping local="$PROJECT_DIR$" web="/" />
-          </mappings>
-        </serverdata>
-      </paths>
-      <paths name="pi@i2cy.tech:2205 password (2)">
+      <paths name="orangepi@i2cy.tech:2207 password">
         <serverdata>
           <mappings>
             <mapping local="$PROJECT_DIR$" web="/" />

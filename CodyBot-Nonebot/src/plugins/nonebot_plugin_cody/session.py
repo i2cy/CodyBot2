@@ -183,20 +183,18 @@ class Session:
 
         return token_len, prompt
 
-    async def generate_GPT3_feedback(self, prompt, teller_name, conversation_header: str) -> (bool, str, str):
+    async def get_GPT3_feedback(self, prompt, teller=None):
         global API_INDEX
-        # 一个api失效时尝试下一个
-        status = False
-        # 警告字段（不会加入记忆）
         warning_text = ""
-
+        res = ""
+        status = False
         for i in range(len(APIKEY_LIST)):
             API_INDEX = (API_INDEX + 1) % len(APIKEY_LIST)
             logger.debug(f"使用 API: {API_INDEX + 1}")
             logger.debug("Full Text: {}".format(prompt))
             res, status = await asyncio.get_event_loop().run_in_executor(None, get_chat_response,
                                                                          APIKEY_LIST[API_INDEX],
-                                                                         prompt, teller_name)
+                                                                         prompt, teller)
             if len(INVALID_APIs):
                 valid_api_count = len(APIKEY_LIST) - len(INVALID_APIs)
                 logger.warning("当前有效API数量: {}/{}".format(valid_api_count, len(APIKEY_LIST)))
@@ -211,6 +209,11 @@ class Session:
                 logger.error(f"API: {APIKEY_LIST[API_INDEX]}(ID: {API_INDEX + 1}) 出现错误")
                 if API_INDEX + 1 not in INVALID_APIs:
                     INVALID_APIs.append(API_INDEX + 1)
+
+        return res, status, warning_text
+
+    async def generate_GPT3_feedback(self, prompt, teller_name, conversation_header: str) -> (bool, str, str):
+        res, status, warning_text = await self.get_GPT3_feedback(prompt, teller_name)
 
         if status:
             if not res.replace(" ", ""):
@@ -259,6 +262,10 @@ class Session:
 
         if msg[-1] not in PUNCTUATION_SETS:
             msg += "。"
+
+        # 补丁输入回调处理
+        for ele in self.addons:
+            msg = ele.update_input_callback(msg)
 
         # 初始态预设
         preset = self.static_preset
