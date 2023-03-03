@@ -13,14 +13,15 @@ CODY_HEADER = "\nCody:"
 ANONYMOUS_HUMAN_HEADER = "\nHuman:"
 
 
-def get_chat_response(key, msg, name,
+def get_chat_response(key, msg, stop_list,
                       temperature=0.7,
                       frequency_p=0.0,
                       presence_p=0.4) -> tuple:
+
     openai.api_key = key
-    stop_list = []
-    if name is not None:
-        stop_list.append("{}:".format(name))
+    logger.debug("using openai api...")
+    if stop_list is None:
+        stop_list = []
     try:
         response: dict = openai.Completion.create(
             model="text-davinci-003",

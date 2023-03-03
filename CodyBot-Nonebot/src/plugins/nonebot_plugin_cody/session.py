@@ -109,6 +109,7 @@ class Session:
             else:
                 cnt += 1
                 time.sleep(0.1)
+        logger.info(f"[session {self.session_id}] alarm thread stopped")
 
     # 设置人格
     def set_preset(self, msg: str):
@@ -183,18 +184,25 @@ class Session:
 
         return token_len, prompt
 
-    async def get_GPT3_feedback(self, prompt, teller=None):
-        global API_INDEX
+    async def get_GPT3_feedback(self, prompt, teller=None, stop_list=None, temperature=0.7,
+                                frequency_p=0.0, presence_p=0.4):
+        global API_INDEX, INVALID_APIs
         warning_text = ""
         res = ""
         status = False
+        if stop_list is None:
+            stop_list = []
+        if teller is not None:
+            stop_list.append("{}:".format(teller))
         for i in range(len(APIKEY_LIST)):
             API_INDEX = (API_INDEX + 1) % len(APIKEY_LIST)
             logger.debug(f"使用 API: {API_INDEX + 1}")
             logger.debug("Full Text: {}".format(prompt))
             res, status = await asyncio.get_event_loop().run_in_executor(None, get_chat_response,
                                                                          APIKEY_LIST[API_INDEX],
-                                                                         prompt, teller)
+                                                                         prompt, stop_list,
+                                                                         temperature, frequency_p,
+                                                                         presence_p)
             if len(INVALID_APIs):
                 valid_api_count = len(APIKEY_LIST) - len(INVALID_APIs)
                 logger.warning("当前有效API数量: {}/{}".format(valid_api_count, len(APIKEY_LIST)))
@@ -232,7 +240,6 @@ class Session:
 
     # 会话
     async def get_chat_response(self, msg, user_id: int = None, user_name: str = None) -> str:
-        global INVALID_APIs
         if user_id is not None or user_name is not None:
             if user_id == CREATOR_ID:
                 user_name = "Icy"
@@ -240,6 +247,7 @@ class Session:
                 user_name = "Miuto"
             elif user_name is not None:
                 upper = user_name.upper()
+                upper = upper.replace(" ", "")
                 if "ICY" in upper:
                     user_name = user_name.upper().replace("ICY", "FakeTheBuster")
                 if "CCY" in upper:
@@ -254,7 +262,24 @@ class Session:
                 user_session_id = self.users[user_id]
                 human_header = "\nHuman_{}:".format(user_session_id)
             else:
-                human_header = "\n{}:".format(user_name)
+                if user_id not in self.users:
+                    if user_id == CREATOR_ID:
+                        nickname = "Icy"
+                    elif user_id == CREATOR_GF_ID:
+                        nickname = "Miuto"
+                    else:
+                        # 生成昵称
+                        prompt = "Convert following name into one friendly nickname in short that must with the same " \
+                                 "language:\n{}\nreturn:".format(user_name)
+                        nickname, status, wm = await self.get_GPT3_feedback(prompt, stop_list=["->", "\n"],
+                                                                            temperature=0.0, frequency_p=0.2,
+                                                                            presence_p=0.0)
+                        if not status:
+                            nickname = user_name
+                    self.users.update({user_id: nickname})
+                else:
+                    nickname = self.users[user_id]
+                human_header = "\n{}:".format(nickname)
         else:
             human_header = ANONYMOUS_HUMAN_HEADER
 
