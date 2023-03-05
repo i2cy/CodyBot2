@@ -2,9 +2,8 @@
 # -*- coding: utf-8 -*-
 # Author: i2cy(i2cy@outlook.com)
 # Project: CodyBot2
-# Filename: openai.py
+# Filename: api.py
 # Created on: 2022/12/27
-
 
 import openai
 from .config import *
@@ -12,12 +11,14 @@ from .config import *
 CODY_HEADER = "\nCody:"
 ANONYMOUS_HUMAN_HEADER = "\nHuman:"
 
+if CODY_CONFIG.cody_api_proxy:
+    openai.proxy = CODY_CONFIG.cody_api_proxy
+
 
 def get_chat_response(key, msg, stop_list,
                       temperature=0.7,
                       frequency_p=0.0,
                       presence_p=0.4) -> tuple:
-
     openai.api_key = key
     logger.debug("using openai api...")
     if stop_list is None:

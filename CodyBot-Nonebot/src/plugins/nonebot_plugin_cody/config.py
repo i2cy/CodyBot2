@@ -18,6 +18,7 @@ class Config(BaseSettings):
 
     cody_session_cache_path: str = "cache/session.json"
     cody_gpt3_apikey_path: str = "configs/gpt3_api.yml"
+    cody_api_proxy: str = ""
     cody_gpt3_max_tokens: int = 400
     cody_max_session_tokens: int = 2048
     cody_session_forget_timeout: int = 3600

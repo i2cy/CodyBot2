@@ -11,7 +11,7 @@ import time
 from transformers import GPT2TokenizerFast
 from .config import *
 from .presets import BUILTIN_PRIVATE_PRESET, BUILTIN_GROUP_PRESET
-from .openai import get_chat_response, CODY_HEADER, ANONYMOUS_HUMAN_HEADER
+from .api import get_chat_response, CODY_HEADER, ANONYMOUS_HUMAN_HEADER
 
 CREATOR_ID = 2226997440
 CREATOR_GF_ID = 2739097870

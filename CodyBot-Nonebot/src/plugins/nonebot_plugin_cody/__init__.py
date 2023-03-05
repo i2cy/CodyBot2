@@ -14,7 +14,7 @@ from .addons import CommandAddon, ReminderAddon
 from .config import *
 from .presets import BUILTIN_PRIVATE_PRESET, BUILTIN_GROUP_PRESET, BUILTIN_PRIVATE_NSFW_PRESET
 from .session import CREATOR_ID, CREATOR_GF_ID
-from .openai import get_chat_response, CODY_HEADER, ANONYMOUS_HUMAN_HEADER
+from .api import get_chat_response, CODY_HEADER, ANONYMOUS_HUMAN_HEADER
 from .session import Session
 
 REGISTERED_ADDONS = [CommandAddon, ReminderAddon]

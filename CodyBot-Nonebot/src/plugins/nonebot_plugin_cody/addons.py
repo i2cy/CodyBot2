@@ -9,7 +9,7 @@ import time
 from nonebot import get_bot, logger
 from nonebot.adapters.mirai2 import MessageEvent, FriendMessage, MessageSegment, GroupMessage, TempMessage, Bot
 from .session import Session
-from .openai import CODY_HEADER
+from .api import CODY_HEADER
 
 
 class BaseAddonManager:
