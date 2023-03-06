@@ -274,8 +274,11 @@ class Session:
                         nickname, status, wm = await self.get_GPT3_feedback(prompt, stop_list=["->", "\n"],
                                                                             temperature=0.0, frequency_p=0.2,
                                                                             presence_p=0.0)
-                        if not status:
+                        # 检测昵称
+                        if not status or nickname == "":
                             nickname = user_name
+                            if nickname == "":
+                                nickname = ANONYMOUS_HUMAN_HEADER
                     self.users.update({user_id: nickname})
                 else:
                     nickname = self.users[user_id]
