@@ -15,7 +15,7 @@ from .config import *
 from .presets import BUILTIN_PRIVATE_PRESET, BUILTIN_GROUP_PRESET, BUILTIN_PRIVATE_NSFW_PRESET
 from .session import CREATOR_ID, CREATOR_GF_ID
 from .api import get_chat_response, CODY_HEADER, ANONYMOUS_HUMAN_HEADER
-from .session import Session
+from .session import Session, INVALID_APIs
 
 REGISTERED_ADDONS = [CommandAddon, ReminderAddon]
 # REGISTERED_ADDONS = []
@@ -55,6 +55,7 @@ async def _get_gpt_response(bot: Bot, event: GroupMessage):
     if len(msg) > 5 and msg[:5] == "i2cmd":
         if user_id in (CREATOR_ID, CREATOR_GF_ID):
             cmd = msg.split(" ")
+
             if len(cmd) > 2 and cmd[1] == "memory":
                 # 重置会话
                 if cmd[2] in ("reset", "Reset", "RESET"):
@@ -62,8 +63,22 @@ async def _get_gpt_response(bot: Bot, event: GroupMessage):
                     await group_chat_session.send("[memory has been cleared and reset]")
                 else:
                     await group_chat_session.send("[unknown command]")
+
+            elif len(cmd) > 1 and cmd[1] in ("api", "apikey", "status"):
+                # 查询状态
+                total_api_count = len(APIKEY_LIST)
+                invalid_count = len(INVALID_APIs)
+                status_text = "[API key status: {}/{}, integrity: {}%, invalid list: {}]".format(
+                    total_api_count - invalid_count,
+                    total_api_count,
+                    int(100 * (total_api_count - invalid_count) / total_api_count),
+                    ", ".join([str(i) for i in INVALID_APIs])
+                )
+                await group_chat_session.send(status_text)
+
             else:
                 await group_chat_session.send("[unknown command]")
+
         else:
             await group_chat_session.finish("[permission denied]", at_sender=True)
 
@@ -135,6 +150,28 @@ async def _get_gpt_response(bot: Bot, event: FriendMessage):
             else:
                 get_user_session(user_id, name=user_name).set_preset(BUILTIN_PRIVATE_PRESET)
                 await private_session.send("[preset has set to normal, all conversation cleared]")
+        elif len(cmd) > 2 and cmd[1] == "memory":
+            # 重置会话
+            if cmd[2] in ("reset", "Reset", "RESET"):
+                get_user_session(user_id, name=user_name).reset()
+                await private_session.send("[memory has been cleared and reset]")
+            else:
+                await private_session.send("[unknown command]")
+
+        elif len(cmd) > 1 and cmd[1] in ("api", "apikey", "status"):
+            # 查询状态
+            total_api_count = len(APIKEY_LIST)
+            invalid_count = len(INVALID_APIs)
+            status_text = "[API key status: {}/{}, integrity: {}%, invalid list: {}]".format(
+                total_api_count - invalid_count,
+                total_api_count,
+                int(100 * (total_api_count - invalid_count) / total_api_count),
+                ", ".join([str(i) for i in INVALID_APIs])
+            )
+            await group_chat_session.send(status_text)
+
+        else:
+            await private_session.send("[unknown command]")
         return
 
     logger.info(f"[session {session_id}] GPT对话输入 \"{msg}\"")
