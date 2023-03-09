@@ -27,7 +27,7 @@ _✨ [Codybot2 查看机器人](https://github.com/i2cy/CodyBot2) ✨_
 机器人的对话机制默认为连续对话，拥有一定的会话记忆能力，同时对私聊、
 群聊有着不同的反应适配，能够很好的处理多人对话时的逻辑、人名等等。
 
-Cody是一只可爱的小马，Icy是她的创造者，由此Cody非常尊重Icy。
+Cody是一只可爱的小马。
 
 ## 特性
  - Cody的记忆在同一个群聊中是使用的同一个记忆空间，在私聊中每个人都是
@@ -44,13 +44,13 @@ Cody是一只可爱的小马，Icy是她的创造者，由此Cody非常尊重Icy
 
 ### 默认配置模板
     ENVIRONMENT=dev
-    VERIFY_KEY=M2i4r8a16i32T64o128k256e512n1024__       # MiraiApiHttp2 配置文件里的 token
+    VERIFY_KEY=tokentokentokentoken___                  # MiraiApiHttp2 配置文件里的 token
     driver=~fastapi+~websockets                         # nonebot_adapter_mirai2 需要使用 websockets 驱动所以需要加该行
     
     MIRAI_HOST=127.0.0.1                                # MiraiApiHttp2 的 ip
     MIRAI_PORT=5700                                     # MiraiApiHttp2 的端口
-    MIRAI_QQ=["3480164230"]                             # Mirai 上已经登录的 qq 号
-    SUPERUSER=["2226997440"]                            # nonebot2 的超管(也可理解为bot的主人什么的)
+    MIRAI_QQ=["1234567899"]                             # Mirai 上已经登录的 qq 号
+    SUPERUSER=["1234567890"]                            # nonebot2 的超管(也可理解为bot的主人什么的)
       
     cody_session_cache_path = "cache"                   # 缓存路径
     cody_gpt3_apikey_path = "configs/gpt3_api.yml"      # api文件的路径
@@ -58,6 +58,12 @@ Cody是一只可爱的小马，Icy是她的创造者，由此Cody非常尊重Icy
     cody_max_session_tokens = 2000                      # 最大连续对话长度
     cody_session_forget_timeout = 43200                 # 会话从多少秒后开始忘记
     cody_api_proxy = "127.0.0.1:1080"                   # 设置代理
+
+
+## *注意
+
+本项目可以抽离为一个单独的模组，但是使用的是Nonebot adaptor是nonebot-adaptor-mirai2,
+若直接移植非此adaptor的bot，可能会出现兼容问题。
 
 
 # 更新日志
