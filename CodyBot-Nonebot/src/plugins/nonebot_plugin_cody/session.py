@@ -132,12 +132,12 @@ class Session:
 
     def generate_time_header_for_chat(self, addon_text=None):
         if addon_text is not None:
-            time_header = "\n[{}. {}]".format(
+            time_header = "\n({}. {})".format(
                 time.strftime(self.time_format_text),
                 addon_text
             )
         else:
-            time_header = "\n[{}]".format(
+            time_header = "\n({})".format(
                 time.strftime(self.time_format_text)
             )
         return time_header
@@ -260,7 +260,7 @@ class Session:
                 if user_id not in self.users:
                     self.users.update({user_id: len(self.users)})
                 user_session_id = self.users[user_id]
-                human_header = "\nHuman_{}:".format(user_session_id)
+                human_header = "\nHuman_{}: ".format(user_session_id)
             else:
                 if user_id not in self.users:
                     if user_id == CREATOR_ID:
@@ -282,7 +282,7 @@ class Session:
                     self.users.update({user_id: nickname})
                 else:
                     nickname = self.users[user_id]
-                human_header = "\n{}:".format(nickname)
+                human_header = "\n{}: ".format(nickname)
         else:
             human_header = ANONYMOUS_HUMAN_HEADER
 
@@ -308,7 +308,7 @@ class Session:
         # 生成提示词
         token_len, prompt = self.generate_prompts(preset, status_header, time_header, human_header, msg)
         # 获得反馈
-        status, res, warning_text = await self.generate_GPT3_feedback(prompt, human_header[1:-1],
+        status, res, warning_text = await self.generate_GPT3_feedback(prompt, human_header[1:-2],
                                                                       f"{time_header}{human_header}{msg}{CODY_HEADER}")
 
         return res + warning_text

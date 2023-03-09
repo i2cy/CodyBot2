@@ -8,8 +8,8 @@
 import openai
 from .config import *
 
-CODY_HEADER = "\nCody:"
-ANONYMOUS_HUMAN_HEADER = "\nHuman:"
+CODY_HEADER = "\nCody: "
+ANONYMOUS_HUMAN_HEADER = "\nHuman: "
 
 if CODY_CONFIG.cody_api_proxy:
     openai.proxy = CODY_CONFIG.cody_api_proxy
@@ -35,9 +35,9 @@ def get_chat_response(key, msg, stop_list,
             stop=stop_list
         )
         res = response['choices'][0]['text'].strip()
-        if CODY_HEADER[1:] in res or CODY_HEADER[1:].replace(":", "：") in res:
-            res = res.split(CODY_HEADER[1:])[-1]
-            res = res.split(CODY_HEADER[1:].replace(":", "："))[-1]
+        if CODY_HEADER[1:-1] in res or CODY_HEADER[1:-1].replace(":", "：") in res:
+            res = res.split(CODY_HEADER[1:-1])[-1]
+            res = res.split(CODY_HEADER[1:-1].replace(":", "："))[-1]
         while len(res) and res[0] == " ":
             res = res[1:]
         return res, True
