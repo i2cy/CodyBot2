@@ -22,6 +22,7 @@ class Config(BaseSettings):
     cody_gpt3_max_tokens: int = 400
     cody_max_session_tokens: int = 2048
     cody_session_forget_timeout: int = 3600
+    cody_use_gpt3: int = 1
 
     class Config:
         extra = "ignore"

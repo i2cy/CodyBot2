@@ -8,13 +8,13 @@
 import time
 from nonebot import get_bot, logger
 from nonebot.adapters.mirai2 import MessageEvent, FriendMessage, MessageSegment, GroupMessage, TempMessage, Bot
-from .session import Session
+from .session import SessionGPT3
 from .api import CODY_HEADER
 
 
 class BaseAddonManager:
 
-    def __init__(self, session: Session,
+    def __init__(self, session: SessionGPT3,
                  addon_msg: str,
                  name_format_count: int = 2,
                  priority: int = 10):

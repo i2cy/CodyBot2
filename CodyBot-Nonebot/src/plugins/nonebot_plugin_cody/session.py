@@ -22,42 +22,68 @@ INVALID_APIs = []
 PUNCTUATION_SETS = {"。", "！", "？", ".", "!", "?", ";", "；", "……", "~", "~"}
 
 
-class Session:
-    def __init__(self, id, is_group=False, name=None, addons=None):
+class SessionGPT3:
+    def __init__(self, id, is_group=False, username=None, addons=None):
+        """
+        Session class of chat with GPT-3 API
+
+        :param id: int, session ID, which is the group ID when group chatting and private user ID when in private
+        :param is_group: bool, weather if this session is a group chat session
+        :param username: str, name of user or 'people' when in private chat
+        :param addons: List(Addon), list of Addon class which should be a BaseAddonManager class
+        """
+
+        # status variables
         self.live = True
+
+        # attributes
         self.is_group = is_group
         self.session_id = id
         self.user_id = id
         self.time_format_text = "%Y-%m-%d %H:%M:%S %A"
+
+        # addon pre-initialize
         if addons is None:
             addons = []
+
+        # initialize preset and username when in group chat
         if is_group:
             self.static_preset = BUILTIN_GROUP_PRESET
             self.name = "people"
-        else:
-            if id == CREATOR_ID:
-                name = "Icy"
-            elif id == CREATOR_GF_ID:
-                name = "Miuto"
-            else:
-                if name is not None:
-                    upper = name.upper()
-                    if "ICY" in upper:
-                        name = name.upper().replace("ICY", "FakeTheBuster")
-                    if "CCY" in upper:
-                        name = name.upper().replace("CCY", "FakeTheBuster")
-                    if "吸吸歪" in upper:
-                        name = name.upper().replace("吸吸歪", "FakeTheBuster")
-                    if "MIUTO" in upper:
-                        name = name.upper().replace("MIUTO", "FakeTheBuster")
-            self.name = name
-            self.static_preset = BUILTIN_PRIVATE_PRESET.format(name)
 
-        # 可部分储存部分
+        # initialize preset and username when in private chat
+        else:
+            if id == CREATOR_ID:  # creator detection
+                username = "Icy"
+            elif id == CREATOR_GF_ID:  # creator's GF detection
+                username = "Miuto"
+            else:
+                if username is not None:  # in case someone fake as an administrator
+
+                    # prepare context
+                    upper = username.upper()
+                    upper = upper.replace(".", "")
+                    upper = upper.replace(" ", "")
+
+                    # name recognition
+                    if "ICY" in upper:
+                        username = username.upper().replace("ICY", "FakeTheBuster")
+                    if "CCY" in upper:
+                        username = username.upper().replace("CCY", "FakeTheBuster")
+                    if "吸吸歪" in upper:
+                        username = username.upper().replace("吸吸歪", "FakeTheBuster")
+                    if "MIUTO" in upper:
+                        username = username.upper().replace("MIUTO", "FakeTheBuster")
+
+            # set username of session
+            self.name = username
+            self.static_preset = BUILTIN_PRIVATE_PRESET.format(username)
+
+        # partially storage ables
         self.addons = [ele(self) for ele in addons]  # 插件
         self.registered_alarms = {}  # 注册的alarm，格式：{uid: [timestamp, async_callback_method, param]}
 
-        # 可储存部分
+        # storage ables
         self.conversation = []  # 对话缓存
         self.conversation_ts = []  # 对话时间戳缓存
         self.statics_conversation_mad_span_tokens = []  # mad span内对话所耗tokens缓存
@@ -312,3 +338,8 @@ class Session:
                                                                       f"{time_header}{human_header}{msg}{CODY_HEADER}")
 
         return res + warning_text
+
+
+class SessionGPT35:
+    def __init__(self, id, is_group=False, user_name=None, addons=None):
+        pass

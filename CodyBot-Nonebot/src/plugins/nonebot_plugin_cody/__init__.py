@@ -15,7 +15,7 @@ from .config import *
 from .presets import BUILTIN_PRIVATE_PRESET, BUILTIN_GROUP_PRESET, BUILTIN_PRIVATE_NSFW_PRESET
 from .session import CREATOR_ID, CREATOR_GF_ID
 from .api import get_chat_response, CODY_HEADER, ANONYMOUS_HUMAN_HEADER
-from .session import Session, INVALID_APIs
+from .session import SessionGPT3, INVALID_APIs
 
 REGISTERED_ADDONS = [CommandAddon, ReminderAddon]
 # REGISTERED_ADDONS = []
@@ -27,15 +27,15 @@ user_lock = {}
 group_lock = {}
 
 
-def get_user_session(user_id, name=None) -> Session:
+def get_user_session(user_id, name=None) -> SessionGPT3:
     if user_id not in user_session:
-        user_session[user_id] = Session(user_id, name=name, addons=REGISTERED_ADDONS)
+        user_session[user_id] = SessionGPT3(user_id, username=name, addons=REGISTERED_ADDONS)
     return user_session[user_id]
 
 
-def get_group_session(group_id) -> Session:
+def get_group_session(group_id) -> SessionGPT3:
     if group_id not in group_session:
-        group_session[group_id] = Session(group_id, is_group=True, addons=REGISTERED_ADDONS)
+        group_session[group_id] = SessionGPT3(group_id, is_group=True, addons=REGISTERED_ADDONS)
     return group_session[group_id]
 
 
