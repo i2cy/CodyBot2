@@ -8,7 +8,7 @@
 
 # OpenAI bot: Cody
 
-*Based on Nonebot & Mirai2*
+*Based on Nonebot & GO-CQHTTP*
 
 _✨ [Codybot2 查看机器人](https://github.com/i2cy/CodyBot2) ✨_
 
@@ -44,12 +44,9 @@ Cody是一只可爱的小马。
 
 ### 默认配置模板
     ENVIRONMENT=dev
-    VERIFY_KEY=tokentokentokentoken___                  # MiraiApiHttp2 配置文件里的 token
-    driver=~fastapi+~websockets                         # nonebot_adapter_mirai2 需要使用 websockets 驱动所以需要加该行
-    
-    MIRAI_HOST=127.0.0.1                                # MiraiApiHttp2 的 ip
-    MIRAI_PORT=5700                                     # MiraiApiHttp2 的端口
-    MIRAI_QQ=["1234567899"]                             # Mirai 上已经登录的 qq 号
+
+    HOST=127.0.0.1                                      # Onebot Listen
+    PORT=8089                                           # 监听端口
     SUPERUSER=["1234567890"]                            # nonebot2 的超管(也可理解为bot的主人什么的)
       
     cody_session_cache_path = "cache"                   # 缓存路径
@@ -62,7 +59,7 @@ Cody是一只可爱的小马。
 
 ## *注意
 
-本项目可以抽离为一个单独的模组，但是使用的是Nonebot adaptor是nonebot-adaptor-mirai2,
+本项目可以抽离为一个单独的模组，但是使用的是Nonebot adaptor是nonebot-adaptor-cqhttp,
 若直接移植非此adaptor的bot，可能会出现兼容问题。
 
 
