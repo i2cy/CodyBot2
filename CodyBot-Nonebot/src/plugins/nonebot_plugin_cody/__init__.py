@@ -8,6 +8,7 @@
 import base64
 from nonebot import on_message
 from nonebot.adapters.onebot import V12Bot as Bot
+from nonebot.adapters.onebot.v12 import Message, MessageEvent, PrivateMessageEvent, MessageSegment, GroupMessageEvent
 from nonebot_plugin_htmlrender import md_to_pic
 
 from .addons import CommandAddon, ReminderAddon
@@ -44,7 +45,7 @@ group_chat_session = on_message(priority=50, block=False, rule=to_me())
 
 
 @group_chat_session.handle()
-async def _get_gpt_response(bot: Bot, event: GroupMessage):
+async def _get_gpt_response(bot: Bot, event: GroupMessageEvent):
     msg = event.get_plaintext().strip()
     group_id = event.sender.group.id
     session_id = group_id
@@ -124,7 +125,7 @@ temp_session = on_message(priority=200, block=False)
 
 
 @temp_session.handle()
-async def _get_gpt_response(bot: Bot, event: TempMessage):
+async def _get_gpt_response(bot: Bot, event: PrivateMessageEvent):
     await temp_session.send("抱歉，Cody目前并不支持临时会话聊天，若想与Cody私聊，请添加Cody为好友，并联系Icy(2226997440)通过审核")
 
 
