@@ -125,7 +125,7 @@ temp_session = on_message(priority=200, block=False)
 
 @temp_session.handle()
 async def _get_gpt_response(bot: Bot, event: TempMessage):
-    await temp_session.send("抱歉，Cody目前并不支持临时会话聊天，若想与Cody私聊，请添加Cody为好友，并联系Icy通过审核")
+    await temp_session.send("抱歉，Cody目前并不支持临时会话聊天，若想与Cody私聊，请添加Cody为好友，并联系Icy(2226997440)通过审核")
 
 
 # 基本私聊（连续对话）

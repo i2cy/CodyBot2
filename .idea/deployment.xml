@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-  <component name="PublishConfigData" autoUpload="Always" serverName="CodyBot on I2APP" remoteFilesAllowedToDisappearOnAutoupload="false">
+  <component name="PublishConfigData" autoUpload="Always" serverName="icy@i2cy.tech:2203 password" remoteFilesAllowedToDisappearOnAutoupload="false">
     <serverData>
       <paths name="AliOS">
         <serverdata>
@@ -23,9 +23,56 @@
           </mappings>
         </serverdata>
       </paths>
+      <paths name="icy@i2cy.tech:2203 password">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/home/icy/CloudProjects/CodyBot2" local="$PROJECT_DIR$" />
+          </mappings>
+        </serverdata>
+      </paths>
       <paths name="orangepi@i2cy.tech:2207 password">
         <serverdata>
           <mappings>
+            <mapping local="$PROJECT_DIR$" web="/" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="pi@10.0.2.143:22 password">
+        <serverdata>
+          <mappings>
+            <mapping local="$PROJECT_DIR$/../Nonebot-Plugin-LockingLock" web="/" />
+            <mapping local="$PROJECT_DIR$" web="/" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="pi@RK3399 local">
+        <serverdata>
+          <mappings>
+            <mapping local="$PROJECT_DIR$/../Nonebot-Plugin-LockingLock" web="/" />
+            <mapping local="$PROJECT_DIR$" web="/" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="pi@SOM-RK3399v2:22 password">
+        <serverdata>
+          <mappings>
+            <mapping local="$PROJECT_DIR$/../Nonebot-Plugin-LockingLock" web="/" />
+            <mapping local="$PROJECT_DIR$" web="/" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="pi@i2cy.tech:2206 password">
+        <serverdata>
+          <mappings>
+            <mapping local="$PROJECT_DIR$/../Nonebot-Plugin-LockingLock" web="/" />
+            <mapping local="$PROJECT_DIR$" web="/" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="pi@i2cy.tech:2211 password">
+        <serverdata>
+          <mappings>
+            <mapping local="$PROJECT_DIR$/../Nonebot-Plugin-LockingLock" web="/" />
             <mapping local="$PROJECT_DIR$" web="/" />
           </mappings>
         </serverdata>

@@ -29,7 +29,7 @@ class SessionGPT3:
 
         :param id: int, session ID, which is the group ID when group chatting and private user ID when in private
         :param is_group: bool, weather if this session is a group chat session
-        :param username: str, name of user or 'people' when in private chat
+        :param username: str, name of user or 'people' when in group chat
         :param addons: List(Addon), list of Addon class which should be a BaseAddonManager class
         """
 
@@ -86,34 +86,48 @@ class SessionGPT3:
         # storage ables
         self.conversation = []  # 对话缓存
         self.conversation_ts = []  # 对话时间戳缓存
-        self.statics_conversation_mad_span_tokens = []  # mad span内对话所耗tokens缓存
-        self.statics_conversation_mad_span_ts = []  # mad span内对话时间戳缓存
         self.users = {}  # 用户名称缓存
-        self.mad_status_change_ts = 0  # mad时间戳
-        self.mad_level = 0  # mad等级
-        self.msg_count = 0  # mad消息相对数量
 
-        # 配置部分
+        # configuration reload
         self.max_session_tokens = CODY_CONFIG.cody_max_session_tokens
 
-        threading.Thread(target=self.alarm_trigger_thread).start()
-        logger.info("[session {}] sub thread started".format(self.session_id))
+        # threading
+        self.threads = []
+        thread = threading.Thread(target=self.alarm_trigger_thread)
+        self.threads.append(thread)
+
+        # run threads
+        [ele.start() for ele in self.threads]
 
     # 重置会话
     def reset(self):
+        """
+        reset current session including user's nickname, conversation short memory
+        :return:
+        """
         self.users = {}
         self.conversation = []
         self.conversation_ts = []
-        self.statics_conversation_mad_span_tokens = []
-        self.statics_conversation_mad_span_ts = []
-        self.mad_status_change_ts = 0
-        self.mad_level = 0
-        self.msg_count = 0
+
+    def dump(self) -> dict:
+        # TODO: add session dump function to save files
+        pass
 
     def kill(self):
+        """
+        kill this session and all of its sub threads
+        :return:
+        """
         self.live = False
+        [ele.join() for ele in self.threads]
+        self.threads.clear()
 
     def alarm_trigger_thread(self):
+        """
+        timed event sub thread
+        :return:
+        """
+        logger.info("[session {}] sub thread started".format(self.session_id))
         cnt = 0
         while self.live:
             if cnt >= 10:
@@ -139,22 +153,23 @@ class SessionGPT3:
 
     # 设置人格
     def set_preset(self, msg: str):
+        """
+        set current static preset with given string
+        :param msg: str
+        :return:
+        """
         self.static_preset = msg
         self.reset()
 
     def generate_preset_with_addons(self, preset):
+        """
+        generate presets with addon fixing, make iteration of addons
+        :param preset:
+        :return:
+        """
         for ele in self.addons:
             preset = ele(preset)
         return preset
-
-    # 导入用户会话
-    async def load_user_session(self):
-        pass
-
-    # 导出用户会话
-    def dump_user_session(self):
-        logger.debug("dump session")
-        return self.static_preset + ANONYMOUS_HUMAN_HEADER + ''.join(self.conversation)
 
     def generate_time_header_for_chat(self, addon_text=None):
         if addon_text is not None:
@@ -340,6 +355,55 @@ class SessionGPT3:
         return res + warning_text
 
 
-class SessionGPT35:
+class SessionGPT35(SessionGPT3):
     def __init__(self, id, is_group=False, user_name=None, addons=None):
-        pass
+        super().__init__(id, is_group, user_name, addons)
+
+    async def get_chat_response(self, msg, user_id: int = None, user_name: str = None) -> str:
+        if user_id is not None or user_name is not None:
+            if user_id == CREATOR_ID:
+                user_name = "Icy"
+            elif user_id == CREATOR_GF_ID:
+                user_name = "Miuto"
+            elif user_name is not None:
+                upper = user_name.upper()
+                upper = upper.replace(" ", "")
+                if "ICY" in upper:
+                    user_name = user_name.upper().replace("ICY", "FakeTheBuster")
+                if "CCY" in upper:
+                    user_name = user_name.upper().replace("CCY", "FakeTheBuster")
+                if "吸吸歪" in upper:
+                    user_name = user_name.upper().replace("吸吸歪", "FakeTheBuster")
+                if "MIUTO" in upper:
+                    user_name = user_name.upper().replace("MIUTO", "FakeTheBuster")
+            if user_name is None:
+                if user_id not in self.users:
+                    self.users.update({user_id: len(self.users)})
+                user_session_id = self.users[user_id]
+                human_header = "\nHuman_{}: ".format(user_session_id)
+            else:
+                if user_id not in self.users:
+                    if user_id == CREATOR_ID:
+                        nickname = "Icy"
+                    elif user_id == CREATOR_GF_ID:
+                        nickname = "Miuto"
+                    else:
+                        # 生成昵称
+                        prompt = "Convert following name into one friendly nickname in short that must with the same " \
+                                 "language:\n{}\nreturn:".format(user_name)
+                        nickname, status, wm = await self.get_GPT3_feedback(prompt, stop_list=["->", "\n"],
+                                                                            temperature=0.0, frequency_p=0.2,
+                                                                            presence_p=0.0)
+                        # 检测昵称
+                        if not status or nickname == "":
+                            nickname = user_name
+                            if nickname == "":
+                                nickname = ANONYMOUS_HUMAN_HEADER
+                    self.users.update({user_id: nickname})
+                else:
+                    nickname = self.users[user_id]
+                human_header = "\n{}: ".format(nickname)
+        else:
+            human_header = ANONYMOUS_HUMAN_HEADER
+
+        logger.debug("处理消息，发送人头部：{}".format(human_header))
