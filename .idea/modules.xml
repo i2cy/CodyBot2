@@ -3,6 +3,7 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/CodyBot2.iml" filepath="$PROJECT_DIR$/.idea/CodyBot2.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../I2cylib/.idea/I2cylib.iml" filepath="$PROJECT_DIR$/../I2cylib/.idea/I2cylib.iml" />
       <module fileurl="file://$PROJECT_DIR$/../Nonebot-Plugin-LockingLock/.idea/NonebotPluginLockingLock.iml" filepath="$PROJECT_DIR$/../Nonebot-Plugin-LockingLock/.idea/NonebotPluginLockingLock.iml" />
     </modules>
   </component>
