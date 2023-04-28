@@ -47,10 +47,10 @@ group_chat_session = on_message(priority=50, block=False, rule=to_me())
 @group_chat_session.handle()
 async def _get_gpt_response(bot: Bot, event: GroupMessageEvent):
     msg = event.get_plaintext().strip()
-    group_id = event.sender.group.id
+    group_id = event.group_id
     session_id = group_id
-    user_id = event.sender.id
-    user_name = event.sender.name
+    user_id = event.user_id
+    user_name = event.
 
     # 检查指令
     if len(msg) > 5 and msg[:5] == "i2cmd":
@@ -120,13 +120,13 @@ async def _get_gpt_response(bot: Bot, event: GroupMessageEvent):
     group_lock[session_id] = False
 
 
-# 群临时聊天
-temp_session = on_message(priority=200, block=False)
-
-
-@temp_session.handle()
-async def _get_gpt_response(bot: Bot, event: PrivateMessageEvent):
-    await temp_session.send("抱歉，Cody目前并不支持临时会话聊天，若想与Cody私聊，请添加Cody为好友，并联系Icy(2226997440)通过审核")
+# # 群临时聊天
+# temp_session = on_message(priority=200, block=False)
+#
+#
+# @temp_session.handle()
+# async def _get_gpt_response(bot: Bot, event: PrivateMessageEvent):
+#     await temp_session.send("抱歉，Cody目前并不支持临时会话聊天，若想与Cody私聊，请添加Cody为好友，并联系Icy(2226997440)通过审核")
 
 
 # 基本私聊（连续对话）
@@ -134,7 +134,7 @@ private_session = on_message(priority=100, block=False)
 
 
 @private_session.handle()
-async def _get_gpt_response(bot: Bot, event: FriendMessage):
+async def _get_gpt_response(bot: Bot, event: PrivateMessageEvent):
     session_id = event.get_session_id()
     msg = event.get_plaintext().strip()
     user_id = event.sender.id
