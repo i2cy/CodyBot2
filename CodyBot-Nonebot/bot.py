@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+# TODO reconstruct adapter from mirai to onebot
+
 import nonebot
 from nonebot.adapters.mirai2 import Adapter as MIRAI2Adapter
 

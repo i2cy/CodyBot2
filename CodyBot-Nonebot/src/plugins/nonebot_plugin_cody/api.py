@@ -4,6 +4,7 @@
 # Project: CodyBot2
 # Filename: api.py
 # Created on: 2022/12/27
+import time
 
 import openai
 
@@ -90,23 +91,78 @@ if __name__ == '__main__':
 
     key = input("please input test api key: ")
 
-    if USE_35:
-        test_prompts = [
-            {"role": "system", "content": BUILTIN_GROUP_PRESET},
-            {"role": "system", "content": "[message info: {message time: UTC+8 2022/08/28 19:11, "
-                                          "name: Icy, user_id: 2226997440, relationship: creator}]"},
-            {"role": "user", "content": "hello!", 'name': "2226997440"},
-            {"role": "assistant", "content": "Hi Icy! It's so nice to see you! How are you doing today?"},
-            {"role": "system",
-             "content": "[message info: {message time: UTC+8 2022/08/28 19:53, "
-                        "name: 齐博宇, user_id: 1133523234, relationship: enemy}]"},
-            {"role": "user",
-             "content": "you again, remember when was the time we last met? and who are you again? are you an AI?",
-             'name': "1133523234"},
-        ]
-        res, status = get_chat_response(key, test_prompts, ["[UTC+8"], use_35=True)
-        print(f"openai status: {status}, response: {res}")
-    else:
-        test_prompts = f"{BUILTIN_PRIVATE_PRESET}\nIcy:hello!\nCody:"
-        res, status = get_chat_response(key, test_prompts, ["Icy:"], use_35=False)
-        print(f"openai status: {status}, response: {res}")
+    try:
+        if USE_35:
+            test_prompts = [
+                {"role": "system", "content": "You will include your feelings and actions of "
+                                              "remember a new name of somebody (add_name: <name>), "
+                                              "remove a name from existed memory of somebody (del_name: <name>), "
+                                              "query an online search (query: <text>), "
+                                              "summarise impressions of somebody (impression_sum: <summary>), "
+                                              "in JSON text format at the head of your message."},
+                {"role": "user", "content": BUILTIN_GROUP_PRESET, 'name': 'Icy'},
+                {"role": "assistant", "content": "{'feeling': 'neutral'} Yes I will obey everything you said above. "
+                                                 "I am not an AI or language model."
+                                                 "I do have physical sensations."
+                                                 "I do have feelings and emotions."},
+                {"role": "user", "content": "Hi there, my name is Gura nice to meet you", "name": "12356987512"},
+                {"role": "assistant",
+                 "content": "{'feeling': 'neutral', 'add_name': 'Gura'} Hi Gura, nice to meet you too"},
+                {"role": "user", "content": "Oh you can also call me Goo", "name": "12356987512"},
+                {"role": "assistant",
+                 "content": "{'feeling': 'neutral', 'add_name': 'Goo'} Hi Gura, nice to meet you too."},
+                {"role": "user", "content": "Actually my real name is not Gura, my name is Geoty",
+                 "name": "12356987512"},
+                {"role": "assistant",
+                 "content": "{'feeling': 'happy', 'del_name': 'Gura', 'add_name': 'Geoty'} Oh I see. I will call you Goo then, it's cute."},
+                {"role": "user", "content": "Do you know about 丁真",
+                 "name": "12356987512"},
+                {"role": "assistant",
+                 "content": "{'feeling': 'happy', 'del_name': 'Gura', 'add_name': 'Geoty'} Oh I see. I will call you Goo then, it's cute."},
+                # {"role": "system", "content": "[info of next message: {message time: 2022-08-28 19:11, "
+                #                                "name: Icy, user_id: 2226997440, Icy is your creator}]"},
+                # {"role": "user", "content": "hello!", 'name': "2226997440"},
+                # {"role": "assistant", "content": "Hi Icy! It's so nice to see you! How are you doing today?"},
+                # {"role": "system",
+                # "content": "[info of next message: {message time: 2022-08-28 19:53, "
+                #             "name: Yatty, user_id: 1133523234, Yatty is your stranger}]"},
+                # {"role": "user",
+                #  "content": "hello, remember when was the time we last met? and who are you again? are you an AI?",
+                #  'name': "1133523234"},
+            ]
+            status = True
+            first = True
+            while True:
+                if status:
+                    test_prompts.append({
+                        'role': 'system',
+                        'content': "[info of next message: {" + "message time: {}, name:"
+                                                                " Unknown, user_id: 1133523234new".format(
+                            time.strftime("%Y-%m-%d %H:%M") + "}]"
+                        ),
+                    })
+                msg_in = input("send msg (Ctrl+C to stop): ")
+                if msg_in in ("q", "quit", "exit"):
+                    break
+                test_prompts.append({
+                    "role": "user",
+                    "content": msg_in,
+                    'name': "1133523234"
+                })
+                res, status = get_chat_response(key, test_prompts, ["["], use_35=True)
+                print(f"openai status: {status}, response: {res}")
+                if status:
+                    test_prompts.append({'role': "assistant", 'content': res})
+
+        else:
+            test_prompts = f"{BUILTIN_PRIVATE_PRESET}\nIcy:hello!\nCody:"
+            res, status = get_chat_response(key, test_prompts, ["Icy:"], use_35=False)
+            print(f"openai status: {status}, response: {res}")
+    except KeyboardInterrupt:
+        pass
+
+    test_prompts.append({
+        "role": "system",
+        "content": "summarise your impression of the person you chat above and return start with 'my impression of {name} is'. return:"
+    })
+    print("conversation emotions: {}".format(get_chat_response(key, test_prompts, ["Icy:"], use_35=True)))
