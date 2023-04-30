@@ -1,5 +1,5 @@
 i2llserver>=1.1.0
-i2cylib>=1.12.5
+i2cylib>=1.12.6
 nb-cli
 PyYAML
 pydantic

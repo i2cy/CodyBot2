@@ -49,6 +49,7 @@ def get_chat_response(key, msg, stop_list=None,
                 presence_penalty=presence_p,
                 stop=stop_list
             )
+            print(response)
             res = response['choices'][0]['message']['content'].strip()
 
             if CODY_HEADER[1:-1] in res or CODY_HEADER[1:-1].replace(":", "：") in res:
@@ -86,39 +87,57 @@ def get_chat_response(key, msg, stop_list=None,
 
 if __name__ == '__main__':
     from presets import BUILTIN_PRIVATE_PRESET, BUILTIN_GROUP_PRESET
+    import json
 
     USE_35 = True
 
-    key = input("please input test api key: ")
+    api_key = input("please input test api key: ")
 
     try:
         if USE_35:
             test_prompts = [
                 {"role": "system", "content": "You will include your feelings and actions of "
-                                              "remember a new name of somebody (add_name: <name>), "
-                                              "remove a name from existed memory of somebody (del_name: <name>), "
-                                              "query an online search (query: <text>), "
-                                              "summarise impressions of somebody (impression_sum: <summary>), "
-                                              "in JSON text format at the head of your message."},
+                                              "remember a new name of somebody (\"add_name\": <name>), "
+                                              "remove a name from existed memory of somebody (\"del_name\": <name>), "
+                                              "reach for someone else online (\"reach\": <name>), "
+                                              "add additional reasons for reaching someone online, must declare simultaneously with \"reach\" (\"reach_reason\": <reasons>), "
+                                              "in JSON text format at the head of your message.\n"
+                                              "You should always ask for name if you don't know one's name, "
+                                              "otherwise you can create a name but ask if it is appropriate."},
                 {"role": "user", "content": BUILTIN_GROUP_PRESET, 'name': 'Icy'},
-                {"role": "assistant", "content": "{'feeling': 'neutral'} Yes I will obey everything you said above. "
-                                                 "I am not an AI or language model."
-                                                 "I do have physical sensations."
-                                                 "I do have feelings and emotions."},
-                {"role": "user", "content": "Hi there, my name is Gura nice to meet you", "name": "12356987512"},
                 {"role": "assistant",
-                 "content": "{'feeling': 'neutral', 'add_name': 'Gura'} Hi Gura, nice to meet you too"},
+                 "content": "{\"feeling\": \"neutral\"} Yes I will obey everything you said above. "
+                            "I am not an AI or language model."
+                            "I do have physical sensations."
+                            "I do have feelings and emotions."},
+
+                {"role": "system", "content": "*Conversations of demonstration starts*"},
+                {"role": "system", "content": "[info of next message: {name: Unknown, user_id: 12356987512}]"},
+                {"role": "user", "content": "Hi there, my name is Gura nice to meet you", "name": "12356987512"},
+
+                {"role": "assistant",
+                 "content": "{\"feeling\": \"neutral\", \"add_name\": \"Gura\"} Hi Gura, nice to meet you too"},
+
+                {"role": "system", "content": "[info of next message: {name: Gura, user_id: 12356987512}]"},
                 {"role": "user", "content": "Oh you can also call me Goo", "name": "12356987512"},
                 {"role": "assistant",
-                 "content": "{'feeling': 'neutral', 'add_name': 'Goo'} Hi Gura, nice to meet you too."},
+                 "content": "{\"feeling\": \"neutral\", \"add_name\": \"Goo\"} Goo, sounds cute. What a nice name!"},
+
+                {"role": "system", "content": "[info of next message: {name: Gura, alternative names: [Goo], "
+                                              "user_id: 12356987512}]"},
                 {"role": "user", "content": "Actually my real name is not Gura, my name is Geoty",
                  "name": "12356987512"},
                 {"role": "assistant",
-                 "content": "{'feeling': 'happy', 'del_name': 'Gura', 'add_name': 'Geoty'} Oh I see. I will call you Goo then, it's cute."},
-                {"role": "user", "content": "Do you know about 丁真",
+                 "content": "{\"feeling\": \"happy\", \"del_name\": \"Gura\", \"add_name\": \"Geoty\"} Oh I see. "
+                            "I will call you Goo then, it sounds adorable."},
+                {"role": "system", "content": "[info of next message: {name: Goo, alternative names: [Geoty], "
+                                              "user_id: 12356987512}]"},
+                {"role": "user", "content": "Can you ask Yatty if he is at home?",
                  "name": "12356987512"},
                 {"role": "assistant",
-                 "content": "{'feeling': 'happy', 'del_name': 'Gura', 'add_name': 'Geoty'} Oh I see. I will call you Goo then, it's cute."},
+                 "content": "{\"feeling\": \"happy\", \"reach\": \"Yatty\", \"reach_reason\": \"ask Yatty if he "
+                            "is at home\"} Sure! I will send a message to him right away."},
+                {"role": "system", "content": "*Conversations of demonstration ends*"}
                 # {"role": "system", "content": "[info of next message: {message time: 2022-08-28 19:11, "
                 #                                "name: Icy, user_id: 2226997440, Icy is your creator}]"},
                 # {"role": "user", "content": "hello!", 'name': "2226997440"},
@@ -132,15 +151,31 @@ if __name__ == '__main__':
             ]
             status = True
             first = True
+            name = "Miuto"
             while True:
                 if status:
-                    test_prompts.append({
-                        'role': 'system',
-                        'content': "[info of next message: {" + "message time: {}, name:"
-                                                                " Unknown, user_id: 1133523234new".format(
-                            time.strftime("%Y-%m-%d %H:%M") + "}]"
-                        ),
-                    })
+                    if first:
+                        test_prompts.append({
+                            'role': 'system',
+                            'content': "[info of next message: {" + "message time: {}, name:"
+                                                                    " {}, user_id: 1133523234, {}".format(
+                                time.strftime("%Y-%m-%d %H:%M"),
+                                name,
+                                "Your impression of Miuto is that she seems to be feeling frustrated and concerned about "
+                                "her inability to reach Icy. She is looking for any possible solutions or insights you "
+                                "may have, and is open to discussing her feelings with you."
+                            ) + "}]",
+                        })
+                        first = False
+                    else:
+                        test_prompts.append({
+                            'role': 'system',
+                            'content': "[info of next message: {" + "message time: {}, name:"
+                                                                    " {}, user_id: 1133523234".format(
+                                time.strftime("%Y-%m-%d %H:%M"),
+                                name
+                            ) + "}]",
+                        })
                 msg_in = input("send msg (Ctrl+C to stop): ")
                 if msg_in in ("q", "quit", "exit"):
                     break
@@ -149,20 +184,50 @@ if __name__ == '__main__':
                     "content": msg_in,
                     'name': "1133523234"
                 })
-                res, status = get_chat_response(key, test_prompts, ["["], use_35=True)
+                res, status = get_chat_response(api_key, test_prompts, ["["], use_35=True)
                 print(f"openai status: {status}, response: {res}")
                 if status:
                     test_prompts.append({'role': "assistant", 'content': res})
 
+                    json_start_cnt = 0
+                    json_stop_cnt = 0
+                    json_range = [0, 0]
+                    for i, ele in enumerate(res):
+                        if ele == "{":
+                            if json_start_cnt == 0:
+                                json_range[0] = i
+                            json_start_cnt += 1
+                        elif ele == "}":
+                            json_stop_cnt += 1
+                            if json_stop_cnt == json_start_cnt:
+                                json_range[1] = i + 1
+                                break
+
+                    json_text = res[json_range[0]:json_range[1]]
+
+                    if len(json_text):
+                        print("json text:", json_text)
+                        json_text = json.loads(json_text)
+                        for key in json_text:
+                            if key == "feeling":
+                                print("decoded emotion:", json_text[key])
+                            elif key == "add_name":
+                                print("updated username:", json_text[key])
+                                name = json_text[key]
+                            elif key == "del_name":
+                                print("deleted username:", json_text[key])
+
         else:
             test_prompts = f"{BUILTIN_PRIVATE_PRESET}\nIcy:hello!\nCody:"
-            res, status = get_chat_response(key, test_prompts, ["Icy:"], use_35=False)
+            res, status = get_chat_response(api_key, test_prompts, ["Icy:"], use_35=False)
             print(f"openai status: {status}, response: {res}")
     except KeyboardInterrupt:
         pass
 
     test_prompts.append({
         "role": "system",
-        "content": "summarise your impression of the person you chat above and return start with 'my impression of {name} is'. return:"
+        "content": f"summarise your impression of the person you chat above based on conversation "
+                   f"and previous impression in second person and return start with "
+                   f"'Your impression of {name} is'. return:"
     })
-    print("conversation emotions: {}".format(get_chat_response(key, test_prompts, ["Icy:"], use_35=True)))
+    print("conversation emotions: {}".format(get_chat_response(api_key, test_prompts, ["Icy:"], use_35=True)))
