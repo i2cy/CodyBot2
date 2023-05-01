@@ -50,7 +50,8 @@ async def _get_gpt_response(bot: Bot, event: GroupMessageEvent):
     group_id = event.group_id
     session_id = group_id
     user_id = event.user_id
-    user_name = event.
+    user_name = f"Unkown_{user_id}"
+    group_name = f"UnkownGroup_{group_id}"
 
     # 检查指令
     if len(msg) > 5 and msg[:5] == "i2cmd":
