@@ -4,9 +4,11 @@
 # Project: CodyBot2
 # Filename: api.py
 # Created on: 2022/12/27
-import time
 
+import time
 import openai
+from typing import Union
+from pydantic import BaseModel
 
 if __name__ == "__main__":
     pass
@@ -28,15 +30,50 @@ else:
     openai.proxy = "i2net.pi:1088"
 
 
-def get_chat_response(key, msg, stop_list=None,
-                      temperature=0.7,
-                      frequency_p=0.0,
-                      presence_p=0.4,
-                      use_35=True) -> tuple:
+class Usage(BaseModel):
+    completion_tokens: int = -1
+    prompt_tokens: int = -1
+    total_tokens: int = -1
+
+    def __str__(self):
+        return str(self.total_tokens)
+
+
+class GPTResponse(BaseModel):
+    message: str = ""
+    usage: Usage = Usage()
+
+    def __str__(self) -> str:
+        return self.message
+
+    def __getitem__(self, item):
+        return self.message.__getitem__(item)
+
+    def __iter__(self):
+        return self.message.__iter__()
+
+    def __len__(self):
+        return len(self.message)
+
+
+def get_chat_response(key: str, msg: Union[str, dict], stop_list: list = None,
+                      temperature: float = 0.7,
+                      frequency_p: float = 0.0,
+                      presence_p: float = 0.4,
+                      use_35: bool = True) -> tuple:
+    """
+    get openai API response
+    :param key: str, api key on openai
+    :param msg: str or dict, str for gpt-3, dict for gpt-3.5
+    :param stop_list: list, stop sequence of model
+    :param temperature: float, controls randomness
+    :param frequency_p: float, reduce repetitive words
+    :param presence_p: float, increase talking about new topics
+    :param use_35: bool, using gpt-3.5
+    :return: (response_text: str, status: bool), (GPTResponse, status: bool)
+    """
     openai.api_key = key
     # logger.debug("using openai api...")
-    if stop_list is None:
-        stop_list = []
     if use_35:
         try:
             response: dict = openai.ChatCompletion.create(
@@ -49,7 +86,7 @@ def get_chat_response(key, msg, stop_list=None,
                 presence_penalty=presence_p,
                 stop=stop_list
             )
-            print(response)
+
             res = response['choices'][0]['message']['content'].strip()
 
             if CODY_HEADER[1:-1] in res or CODY_HEADER[1:-1].replace(":", "：") in res:
@@ -58,9 +95,15 @@ def get_chat_response(key, msg, stop_list=None,
             while len(res) and res[0] == " ":
                 res = res[1:]
 
+            usage = Usage(completion_tokens=response["usage"]["completion_tokens"],
+                          prompt_tokens=response["usage"]["prompt_tokens"],
+                          total_tokens=response["usage"]["total_tokens"])
+
+            res = GPTResponse(message=res, usage=usage)
+
             return res, True
         except Exception as e:
-            return f"发生错误: {e}", False
+            return GPTResponse(message=f"发生错误: {e}"), False
 
     else:
         try:
@@ -74,6 +117,7 @@ def get_chat_response(key, msg, stop_list=None,
                 presence_penalty=presence_p,
                 stop=stop_list
             )
+
             res = response['choices'][0]['text'].strip()
             if CODY_HEADER[1:-1] in res or CODY_HEADER[1:-1].replace(":", "：") in res:
                 res = res.split(CODY_HEADER[1:-1])[-1]
@@ -100,9 +144,11 @@ if __name__ == '__main__':
                                               "remember a new name of somebody (\"add_name\": <name>), "
                                               "remove a name from existed memory of somebody (\"del_name\": <name>), "
                                               "reach for someone else online (\"reach\": <name>), "
-                                              "add additional reasons for reaching someone online, must declare simultaneously with \"reach\" (\"reach_reason\": <reasons>), "
+                                              "add additional reasons for reaching someone online, must declare "
+                                              "simultaneously with \"reach\" (\"reach_reason\": <reasons>),"
                                               "in JSON text format at the head of your message.\n"
-                                              "You should always ask for name if you don't know one's name, "
+                                              "You should always ask for name if you don't know one's name (or his "
+                                              "name is unkown in record),"
                                               "otherwise you can create a name but ask if it is appropriate."},
                 {"role": "user", "content": BUILTIN_GROUP_PRESET, 'name': 'Icy'},
                 {"role": "assistant",
@@ -112,9 +158,15 @@ if __name__ == '__main__':
                             "I do have feelings and emotions."},
 
                 {"role": "system", "content": "*Conversations of demonstration starts*"},
-                {"role": "system", "content": "[info of next message: {name: Unknown, user_id: 12356987512}]"},
-                {"role": "user", "content": "Hi there, my name is Gura nice to meet you", "name": "12356987512"},
 
+                {"role": "system", "content": "[info of next message: {name: Unknown_12356987512, user_id: 12356987512}]"},
+                {"role": "user", "content": "Hi there", "name": "12356987512"},
+                {"role": "assistant",
+                 "content": "{\"feeling\": \"neutral\"} Hi there, nice to meet you. May I have your name please?"},
+
+                {"role": "system",
+                 "content": "[info of next message: {name: Unknown_12356987512, user_id: 12356987512}]"},
+                {"role": "user", "content": "Of course! You can call me Gura.", "name": "12356987512"},
                 {"role": "assistant",
                  "content": "{\"feeling\": \"neutral\", \"add_name\": \"Gura\"} Hi Gura, nice to meet you too"},
 
@@ -130,6 +182,7 @@ if __name__ == '__main__':
                 {"role": "assistant",
                  "content": "{\"feeling\": \"happy\", \"del_name\": \"Gura\", \"add_name\": \"Geoty\"} Oh I see. "
                             "I will call you Goo then, it sounds adorable."},
+
                 {"role": "system", "content": "[info of next message: {name: Goo, alternative names: [Geoty], "
                                               "user_id: 12356987512}]"},
                 {"role": "user", "content": "Can you ask Yatty if he is at home?",
@@ -137,33 +190,31 @@ if __name__ == '__main__':
                 {"role": "assistant",
                  "content": "{\"feeling\": \"happy\", \"reach\": \"Yatty\", \"reach_reason\": \"ask Yatty if he "
                             "is at home\"} Sure! I will send a message to him right away."},
+
+                {"role": "system", "content": "[info of next message: {name: Vibe, alternative names: [], "
+                                              "user_id: 145566785}]"},
+                {"role": "user", "content": "Hey, fuck you!",
+                 "name": "145566785"},
+                {"role": "assistant",
+                 "content": "{\"feeling\": \"angry\", \"reach\": \"Icy\", \"reach_reason\": \"tell Icy that Vibe is "
+                            "insulting me\"} Excuse me!? Who do you think you are? Fuck you Vibe! Go back to your "
+                            "caves you savage."},
+
                 {"role": "system", "content": "*Conversations of demonstration ends*"}
-                # {"role": "system", "content": "[info of next message: {message time: 2022-08-28 19:11, "
-                #                                "name: Icy, user_id: 2226997440, Icy is your creator}]"},
-                # {"role": "user", "content": "hello!", 'name': "2226997440"},
-                # {"role": "assistant", "content": "Hi Icy! It's so nice to see you! How are you doing today?"},
-                # {"role": "system",
-                # "content": "[info of next message: {message time: 2022-08-28 19:53, "
-                #             "name: Yatty, user_id: 1133523234, Yatty is your stranger}]"},
-                # {"role": "user",
-                #  "content": "hello, remember when was the time we last met? and who are you again? are you an AI?",
-                #  'name': "1133523234"},
             ]
             status = True
             first = True
-            name = "Miuto"
+            name = "Unkown_1133523234"
             while True:
                 if status:
                     if first:
                         test_prompts.append({
                             'role': 'system',
                             'content': "[info of next message: {" + "message time: {}, name:"
-                                                                    " {}, user_id: 1133523234, {}".format(
+                                                                    " {}, user_id: 1133523234, previous impression: {}".format(
                                 time.strftime("%Y-%m-%d %H:%M"),
                                 name,
-                                "Your impression of Miuto is that she seems to be feeling frustrated and concerned about "
-                                "her inability to reach Icy. She is looking for any possible solutions or insights you "
-                                "may have, and is open to discussing her feelings with you."
+                                f"Your impression of {name} is unknown since you never met"
                             ) + "}]",
                         })
                         first = False
@@ -187,7 +238,7 @@ if __name__ == '__main__':
                 res, status = get_chat_response(api_key, test_prompts, ["["], use_35=True)
                 print(f"openai status: {status}, response: {res}")
                 if status:
-                    test_prompts.append({'role': "assistant", 'content': res})
+                    test_prompts.append({'role': "assistant", 'content': str(res)})
 
                     json_start_cnt = 0
                     json_stop_cnt = 0
@@ -202,6 +253,8 @@ if __name__ == '__main__':
                             if json_stop_cnt == json_start_cnt:
                                 json_range[1] = i + 1
                                 break
+
+                    print("token usage:", res.usage)
 
                     json_text = res[json_range[0]:json_range[1]]
 

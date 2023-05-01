@@ -8,10 +8,12 @@
 import asyncio
 import threading
 import time
+import tiktoken
 from transformers import GPT2TokenizerFast
 from .config import *
 from .presets import BUILTIN_PRIVATE_PRESET, BUILTIN_GROUP_PRESET
 from .api import get_chat_response, CODY_HEADER, ANONYMOUS_HUMAN_HEADER
+from .userdata import Impression, ImpressionFrame
 
 CREATOR_ID = 2226997440
 CREATOR_GF_ID = 2739097870
@@ -356,7 +358,9 @@ class SessionGPT3:
 
 
 class SessionGPT35(SessionGPT3):
-    def __init__(self, id, is_group=False, user_name=None, addons=None):
+    def __init__(self, id: int, is_group: bool = False,
+                 user_name: str = None, addons: list = None,
+                 impression_db: Impression = None):
         super().__init__(id, is_group, user_name, addons)
 
     async def get_chat_response(self, msg, user_id: int = None, user_name: str = None) -> str:

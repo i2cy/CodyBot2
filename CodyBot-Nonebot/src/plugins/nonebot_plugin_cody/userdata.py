@@ -13,8 +13,6 @@ from pydantic import BaseModel
 if __name__ == "__main__":
     class CODY_CONFIG:
         cody_session_cache_path = "./"
-
-
     from utils import TimeStamp
 else:
     from .config import CODY_CONFIG
