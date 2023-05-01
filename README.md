@@ -8,6 +8,8 @@
 
 # OpenAI bot: Cody
 
+#### 5月1日日志：正在移植GPT3.5并新增功能
+
 *Based on Nonebot & GO-CQHTTP*
 
 _✨ [Codybot2 查看机器人](https://github.com/i2cy/CodyBot2) ✨_
