@@ -5,12 +5,22 @@
 # Filename: addons
 # Created on: 2023/2/16
 
+# TODO: reconstruct this file into GPT-3.5 mode
+
 import time
 from nonebot import get_bot, logger
-from nonebot.adapters.mirai2 import MessageEvent, FriendMessage, MessageSegment, GroupMessage, TempMessage, Bot
-from .session import SessionGPT3
+from nonebot.adapters.onebot.v12 import Bot, MessageSegment, Message
+from .session import SessionGPT3, SessionGPT35
 from .api import CODY_HEADER
 
+
+class AddonBase:
+
+    def __init__(self, session: SessionGPT35, preset_dict: dict):
+
+        self.session = session
+
+        self.preset_base
 
 class BaseAddonManager:
 

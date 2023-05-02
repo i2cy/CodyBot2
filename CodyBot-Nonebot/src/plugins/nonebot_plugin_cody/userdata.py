@@ -314,3 +314,21 @@ if __name__ == '__main__':
     test_db.update_individual(test_uid, last_interact_timestamp=int(a.last_interact_timestamp + 3600))
 
     test_db.close()
+
+    # pickle test
+    # import pickle
+    # s = pickle.dumps(test_db)
+    # print("test pickle serialization result:", s)
+    # s_recover: Impression = pickle.loads(s)
+    # s_recover.connect()
+    # a = s_recover.get_individual(test_uid)
+    # print(f"name: {a.name}\n"
+    #       f"id: {a.id}\n"
+    #       f"alternatives: {a.alternatives}\n"
+    #       f"last_ts: {a.last_interact_timestamp}\n"
+    #       f"last_id: {a.last_interact_session_ID}\n"
+    #       f"last_is_group: {a.last_interact_session_is_group}\n"
+    #       f"additions: {a.additional_json}")
+    #
+    # print("test done")
+

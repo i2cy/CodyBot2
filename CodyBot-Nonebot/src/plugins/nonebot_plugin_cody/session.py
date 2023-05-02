@@ -357,11 +357,95 @@ class SessionGPT3:
         return res + warning_text
 
 
-class SessionGPT35(SessionGPT3):
+class SessionGPT35:
     def __init__(self, id: int, is_group: bool = False,
-                 user_name: str = None, addons: list = None,
+                 name: str = None, addons: list = None,
                  impression_db: Impression = None):
-        super().__init__(id, is_group, user_name, addons)
+        """
+        chat session of Cody using GPT-3.5
+        :param id: int, usually QQ ID
+        :param is_group: bool, weather the session is a group chat session
+        :param name: str, default username or group name, will be overriden by impression data
+        :param addons: list, list of addon objects with standard BaseAddon parent in addons.py
+        :param impression_db: Impression, impression database interface
+        """
+        # statics
+        self.id = id
+        self.is_group = is_group
+        self.name = name
+        self.addons = addons
+        self.impression = impression_db
+
+        # threading
+        self.live = True
+        self.threads = []
+
+        # storage ables
+        self.registered_alarms = []  # registered alarms, (format: [timestamp, string to execute], e.g. [])
+
+
+    def dump(self, base64: bool = True) -> str:
+        """
+        dump current session status to str
+        :param base64: bool, use base64 to encode data
+        :return: str
+        """
+
+
+    def load(self, status_str: str):
+        """
+        load current session status from previous saved status string
+        :param status_str: str
+        :return:
+        """
+
+
+    def alarm_trigger_thread(self):
+        """
+        timed event sub thread
+        :return:
+        """
+        logger.info("[session {}] sub thread started".format(self.session_id))
+        cnt = 0
+        while self.live:
+            if cnt >= 10:
+                try:
+                    cnt = 0
+                    ts_now = time.time()
+                    triggered_alarms = []
+                    for ele in self.registered_alarms.keys():
+                        if ts_now > self.registered_alarms[ele][0]:
+                            logger.debug("[session {}] alarm triggered of ID {}".format(self.session_id, ele))
+                            async_object = self.registered_alarms[ele][1](*self.registered_alarms[ele][2])
+                            asyncio.run(async_object)
+                            triggered_alarms.append(ele)
+
+                    for ele in triggered_alarms:
+                        self.registered_alarms.pop(ele)
+                except Exception as err:
+                    logger.error(f"[session {self.session_id}] error while executing alarm, {err}")
+            else:
+                cnt += 1
+                time.sleep(0.1)
+        logger.info(f"[session {self.session_id}] alarm thread stopped")
+
+    def __del__(self):
+        self.kill()
+
+    def kill(self):
+        """
+        kill current session, which will make sub threads stop
+        :return:
+        """
+        self.live = False
+        [ele.join() for ele in self.threads]
+        self.threads.clear()
+
+    def reset(self):
+        """
+        reset current session and its memory, will not affect impression data
+        :return:
+        """
 
     async def get_chat_response(self, msg, user_id: int = None, user_name: str = None) -> str:
         if user_id is not None or user_name is not None:

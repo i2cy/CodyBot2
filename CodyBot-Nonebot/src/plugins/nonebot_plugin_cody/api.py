@@ -130,7 +130,7 @@ def get_chat_response(key: str, msg: Union[str, dict], stop_list: list = None,
 
 
 if __name__ == '__main__':
-    from presets import BUILTIN_PRIVATE_PRESET, BUILTIN_GROUP_PRESET
+    from presets import BUILTIN_PRIVATE_PRESET, BUILTIN_GROUP_PRESET, BUILTIN_PRIVATE_NSFW_PRESET
     import json
 
     USE_35 = True
@@ -140,7 +140,7 @@ if __name__ == '__main__':
     try:
         if USE_35:
             test_prompts = [
-                {"role": "system", "content": "You will include your feelings and actions of "
+                {"role": "system", "content": "{} You will include your feelings and actions of "
                                               "remember a new name of somebody (\"add_name\": <name>), "
                                               "remove a name from existed memory of somebody (\"del_name\": <name>), "
                                               "reach for someone else online (\"reach\": <name>), "
@@ -148,14 +148,14 @@ if __name__ == '__main__':
                                               "simultaneously with \"reach\" (\"reach_reason\": <reasons>),"
                                               "in JSON text format at the head of your message.\n"
                                               "You should always ask for name if you don't know one's name (or his "
-                                              "name is unkown in record),"
-                                              "otherwise you can create a name but ask if it is appropriate."},
-                {"role": "user", "content": BUILTIN_GROUP_PRESET, 'name': 'Icy'},
-                {"role": "assistant",
-                 "content": "{\"feeling\": \"neutral\"} Yes I will obey everything you said above. "
-                            "I am not an AI or language model."
-                            "I do have physical sensations."
-                            "I do have feelings and emotions."},
+                                              "name is unkown in record), otherwise you can create a name but ask if "
+                                              "it is appropriate.".format(BUILTIN_GROUP_PRESET)},
+                # {"role": "user", "content": BUILTIN_GROUP_PRESET, 'name': 'Icy'},
+                # {"role": "assistant",
+                #  "content": "{\"feeling\": \"neutral\"} Yes I will obey everything you said above. "
+                #             "I am not an AI or language model."
+                #             "I do have physical sensations."
+                #             "I do have feelings and emotions."},
 
                 {"role": "system", "content": "*Conversations of demonstration starts*"},
 

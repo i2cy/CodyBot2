@@ -6,3 +6,4 @@ pydantic
 openai
 transformers
 tiktoken
+dill
