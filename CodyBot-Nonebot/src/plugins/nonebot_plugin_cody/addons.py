@@ -12,15 +12,22 @@ from nonebot import get_bot, logger
 from nonebot.adapters.onebot.v12 import Bot, MessageSegment, Message
 from .session import SessionGPT3, SessionGPT35
 from .api import CODY_HEADER
+from .presets import Presets
 
 
 class AddonBase:
 
-    def __init__(self, session: SessionGPT35, preset_dict: dict):
+    def __init__(self, session: SessionGPT35, presets: Presets, bot: Bot):
+        """
+        basic addon object parent
+        :param session: SessionGPT35
+        :param presets: Presets
+        :param bot: Bot
+        """
 
         self.session = session
-
-        self.preset_base
+        self.presets = presets
+        self.bot = bot
 
 class BaseAddonManager:
 

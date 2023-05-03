@@ -11,14 +11,13 @@ from typing import Union
 from pydantic import BaseModel
 
 if __name__ == "__main__":
-    pass
-
-
     # from config import *
     class CODY_CONFIG:
         cody_gpt3_max_tokens = 500
+    from utils import *
 else:
     from .config import *
+    from .utils import *
 
 CODY_HEADER = "\nCody: "
 ANONYMOUS_HUMAN_HEADER = "\nHuman: "
@@ -28,32 +27,6 @@ if not __name__ == "__main__":
         openai.proxy = CODY_CONFIG.cody_api_proxy
 else:
     openai.proxy = "i2net.pi:1088"
-
-
-class Usage(BaseModel):
-    completion_tokens: int = -1
-    prompt_tokens: int = -1
-    total_tokens: int = -1
-
-    def __str__(self):
-        return str(self.total_tokens)
-
-
-class GPTResponse(BaseModel):
-    message: str = ""
-    usage: Usage = Usage()
-
-    def __str__(self) -> str:
-        return self.message
-
-    def __getitem__(self, item):
-        return self.message.__getitem__(item)
-
-    def __iter__(self):
-        return self.message.__iter__()
-
-    def __len__(self):
-        return len(self.message)
 
 
 def get_chat_response(key: str, msg: Union[str, dict], stop_list: list = None,
@@ -159,40 +132,42 @@ if __name__ == '__main__':
 
                 {"role": "system", "content": "*Conversations of demonstration starts*"},
 
-                {"role": "system", "content": "[info of next message: {name: Unknown_12356987512, user_id: 12356987512}]"},
+                {"role": "system",
+                 "content": "{\"info of next message\": {\"name\": \"Unknown_12356987512\", \"user ID\": 12356987512}}"},
                 {"role": "user", "content": "Hi there", "name": "12356987512"},
                 {"role": "assistant",
                  "content": "{\"feeling\": \"neutral\"} Hi there, nice to meet you. May I have your name please?"},
 
                 {"role": "system",
-                 "content": "[info of next message: {name: Unknown_12356987512, user_id: 12356987512}]"},
+                 "content": "{\"info of next message\": {\"name\": \"Unknown_12356987512\", \"user ID\": 12356987512}}"},
                 {"role": "user", "content": "Of course! You can call me Gura.", "name": "12356987512"},
                 {"role": "assistant",
                  "content": "{\"feeling\": \"neutral\", \"add_name\": \"Gura\"} Hi Gura, nice to meet you too"},
 
-                {"role": "system", "content": "[info of next message: {name: Gura, user_id: 12356987512}]"},
+                {"role": "system",
+                 "content": "{\"info of next message\": {\"name\": \"Gura\", \"user ID\": 12356987512}}"},
                 {"role": "user", "content": "Oh you can also call me Goo", "name": "12356987512"},
                 {"role": "assistant",
                  "content": "{\"feeling\": \"neutral\", \"add_name\": \"Goo\"} Goo, sounds cute. What a nice name!"},
 
-                {"role": "system", "content": "[info of next message: {name: Gura, alternative names: [Goo], "
-                                              "user_id: 12356987512}]"},
+                {"role": "system", "content": "{\"info of next message\": {\"name\": \"Gura\", "
+                                              "\"alternative names\": [\"Goo\"], \"user ID\": 12356987512}}"},
                 {"role": "user", "content": "Actually my real name is not Gura, my name is Geoty",
                  "name": "12356987512"},
                 {"role": "assistant",
                  "content": "{\"feeling\": \"happy\", \"del_name\": \"Gura\", \"add_name\": \"Geoty\"} Oh I see. "
                             "I will call you Goo then, it sounds adorable."},
 
-                {"role": "system", "content": "[info of next message: {name: Goo, alternative names: [Geoty], "
-                                              "user_id: 12356987512}]"},
+                {"role": "system", "content": "{\"info of next message\": {\"name\": \"Goo\", "
+                                              "\"alternative names\": [\"Geoty\"], \"user ID\": 12356987512}}"},
                 {"role": "user", "content": "Can you ask Yatty if he is at home?",
                  "name": "12356987512"},
                 {"role": "assistant",
                  "content": "{\"feeling\": \"happy\", \"reach\": \"Yatty\", \"reach_reason\": \"ask Yatty if he "
                             "is at home\"} Sure! I will send a message to him right away."},
 
-                {"role": "system", "content": "[info of next message: {name: Vibe, alternative names: [], "
-                                              "user_id: 145566785}]"},
+                {"role": "system", "content": "{\"info of next message\": {\"name\": \"Vibe\", "
+                                              "\"alternative names\": [], \"user ID\": 145566785}}"},
                 {"role": "user", "content": "Hey, fuck you!",
                  "name": "145566785"},
                 {"role": "assistant",
@@ -208,25 +183,39 @@ if __name__ == '__main__':
             while True:
                 if status:
                     if first:
-                        test_prompts.append({
-                            'role': 'system',
-                            'content': "[info of next message: {" + "message time: {}, name:"
-                                                                    " {}, user_id: 1133523234, previous impression: {}".format(
-                                time.strftime("%Y-%m-%d %H:%M"),
-                                name,
-                                f"Your impression of {name} is unknown since you never met"
-                            ) + "}]",
-                        })
+                        test_prompts.append(
+                            {
+                                'role': 'system',
+                                'content': json.dumps(
+                                    {
+                                        "info of next message": {
+                                            "message time": time.strftime("%Y-%m-%d %H:%M"),
+                                            "name": name,
+                                            "alternative names": [],
+                                            "user ID": 1133523234,
+                                            "previous impression": "unknown since you never met before"
+                                        }
+                                    }
+                                )
+                            }
+                        )
                         first = False
                     else:
-                        test_prompts.append({
-                            'role': 'system',
-                            'content': "[info of next message: {" + "message time: {}, name:"
-                                                                    " {}, user_id: 1133523234".format(
-                                time.strftime("%Y-%m-%d %H:%M"),
-                                name
-                            ) + "}]",
-                        })
+                        test_prompts.append(
+                            {
+                                'role': 'system',
+                                'content': json.dumps(
+                                    {
+                                        "info of next message": {
+                                            "message time": time.strftime("%Y-%m-%d %H:%M"),
+                                            "name": name,
+                                            "alternative names": [],
+                                            "user ID": 1133523234
+                                        }
+                                    }
+                                )
+                            }
+                        )
                 msg_in = input("send msg (Ctrl+C to stop): ")
                 if msg_in in ("q", "quit", "exit"):
                     break

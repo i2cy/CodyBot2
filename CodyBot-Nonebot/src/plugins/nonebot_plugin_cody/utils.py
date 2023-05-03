@@ -10,6 +10,32 @@ from typing import Union
 from pydantic import BaseModel
 
 
+class Usage(BaseModel):
+    completion_tokens: int = -1
+    prompt_tokens: int = -1
+    total_tokens: int = -1
+
+    def __str__(self):
+        return str(self.total_tokens)
+
+
+class GPTResponse(BaseModel):
+    message: str = ""
+    usage: Usage = Usage()
+
+    def __str__(self) -> str:
+        return self.message
+
+    def __getitem__(self, item):
+        return self.message.__getitem__(item)
+
+    def __iter__(self):
+        return self.message.__iter__()
+
+    def __len__(self):
+        return len(self.message)
+
+
 class TimeStamp(BaseModel):
     timestamp: Union[float, int]
 
