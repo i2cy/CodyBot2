@@ -6,12 +6,13 @@
 # Created on: 2023/2/16
 
 import json
+import time
 from pydantic import BaseModel
 
 if __name__ == "__main__":
-    from utils import GPTResponse
+    from utils import GPTResponse, TimeStamp
 else:
-    from .utils import GPTResponse
+    from .utils import GPTResponse, TimeStamp
 
 
 class Presets(BaseModel):
@@ -19,7 +20,7 @@ class Presets(BaseModel):
     actions: list = [
         "remember a new name of somebody (\"add_name\": <name>)",
         "remove a name from existed memory of somebody (\"del_name\": <name>)",
-        "reach for someone else online (\"reach\": <name>)",
+        "reach for someone else online (\"reach\": <nameupdated >)",
         "add additional reasons for reaching someone online, must declare simultaneously with \"reach\" ("
         "\"reach_reason\": <reasons>)",
     ]  # extended preset of actions format
@@ -30,41 +31,41 @@ class Presets(BaseModel):
 
     conversation_examples: list = [
         [{"role": "system",
-          "content": "{\"info of next message\": {\"name\": \"Unknown_12356987512\", \"user ID\": 12356987512}}"},
+          "content": "{\"info of next message\": {\"user ID\": 12356987512, \"name\": \"Unknown_12356987512\"}}"},
          {"role": "user", "content": "Hi there", "name": "12356987512"},
          {"role": "assistant",
           "content": "{\"feeling\": \"neutral\"} Hi there, nice to meet you. May I have your name please?"},
 
          {"role": "system",
-          "content": "{\"info of next message\": {\"name\": \"Unknown_12356987512\", \"user ID\": 12356987512}}"},
+          "content": "{\"info of next message\": {\"user ID\": 12356987512, \"name\": \"Unknown_12356987512\"}}"},
          {"role": "user", "content": "Of course! You can call me Gura.", "name": "12356987512"},
          {"role": "assistant",
           "content": "{\"feeling\": \"neutral\", \"add_name\": \"Gura\"} Hi Gura, nice to meet you too"},
 
          {"role": "system",
-          "content": "{\"info of next message\": {\"name\": \"Gura\", \"user ID\": 12356987512}}"},
+          "content": "{\"info of next message\": {\"user ID\": 12356987512, \"name\": \"Gura\"}}"},
          {"role": "user", "content": "Oh you can also call me Goo", "name": "12356987512"},
          {"role": "assistant",
           "content": "{\"feeling\": \"neutral\", \"add_name\": \"Goo\"} Goo, sounds cute. What a nice name!"},
 
-         {"role": "system", "content": "{\"info of next message\": {\"name\": \"Gura\", "
-                                       "\"alternative names\": [\"Goo\"], \"user ID\": 12356987512}}"},
+         {"role": "system", "content": "{\"info of next message\": {\"user ID\": 12356987512, \"name\": \"Gura\", "
+                                       "\"alternative names\": [\"Goo\"]}}"},
          {"role": "user", "content": "Actually my real name is not Gura, my name is Geoty",
           "name": "12356987512"},
          {"role": "assistant",
           "content": "{\"feeling\": \"happy\", \"del_name\": \"Gura\", \"add_name\": \"Geoty\"} Oh I see. "
                      "I will call you Goo then, it sounds adorable."},
 
-         {"role": "system", "content": "{\"info of next message\": {\"name\": \"Goo\", "
-                                       "\"alternative names\": [\"Geoty\"], \"user ID\": 12356987512}}"},
+         {"role": "system", "content": "{\"info of next message\": {\"user ID\": 12356987512, \"name\": \"Goo\", "
+                                       "\"alternative names\": [\"Geoty\"]}}"},
          {"role": "user", "content": "Can you ask Yatty if he is at home?",
           "name": "12356987512"},
          {"role": "assistant",
           "content": "{\"feeling\": \"happy\", \"reach\": \"Yatty\", \"reach_reason\": \"ask Yatty if he "
                      "is at home\"} Sure! I will send a message to him right away."}],
 
-        [{"role": "system", "content": "{\"info of next message\": {\"name\": \"Vibe\", "
-                                       "\"alternative names\": [], \"user ID\": 145566785}}"},
+        [{"role": "system", "content": "{\"info of next message\": {\"user ID\": 145566785, \"name\": \"Vibe\", "
+                                       "\"alternative names\": []}}"},
          {"role": "user", "content": "Hey, fuck you!",
           "name": "145566785"},
          {"role": "assistant",
@@ -83,8 +84,7 @@ class Presets(BaseModel):
     user_msg_post_proc: list = []  # list of functions that will be called every time calling 'add_user_message' method
     cody_msg_post_proc: list = []  # list of functions that will be called every time parsing a GPTResponse
 
-
-    def __form_user_msg(self):
+    def __form_user_msg(self) -> list:
         """
         return standard type of user msg
         :return: dict
@@ -95,9 +95,12 @@ class Presets(BaseModel):
                 "content": json.dumps(self.user_msg_info)
             },
             {
-                "role": "user"
+                "role": "user",
+                "content": self.user_msg
             }
         ]
+
+        return ret
 
     def update_action(self, action: str, id: int = None) -> int:
         """
@@ -182,7 +185,6 @@ class Presets(BaseModel):
 
         return id
 
-
     def del_conversation_example(self, id: int = None, examples: dict = None):
         """
         delete a conversation example list
@@ -227,19 +229,26 @@ class Presets(BaseModel):
         }
         return res
 
-    def add_user_message(self, msg: str, msg_info: dict):
-        """
-        :param msg:
-        :param msg_info:
-        :return:
-        """
+    def add_user_message(self, msg: str, username: str, user_id: int, alternative_name: list = None,
+                         timestamp: TimeStamp = None, extra_msg_info: dict = None):
+
+        if alternative_name is None:
+            alternative_name = []
+        if timestamp is None:
+            timestamp = TimeStamp(time.time())
+        if extra_msg_info is None:
+            extra_msg_info = {}
+
         if self.user_msg:
-            self.conversation.append(
-                {
-                    "role": "system",
-                    "content": json.dumps(self.user_msg_info)
-                }
-            )
+            self.conversation.extend(self.__form_user_msg())
+
+        self.user_msg = msg
+        self.user_msg_info = {
+            "message time": timestamp,
+            "user ID": user_id,
+            "name": username,
+            "alternative names": alternative_name,
+        }
 
     def add_cody_message(self, msg: GPTResponse):
         """

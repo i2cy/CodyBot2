@@ -14,6 +14,8 @@ if __name__ == "__main__":
     # from config import *
     class CODY_CONFIG:
         cody_gpt3_max_tokens = 500
+
+
     from utils import *
 else:
     from .config import *
@@ -133,41 +135,43 @@ if __name__ == '__main__':
                 {"role": "system", "content": "*Conversations of demonstration starts*"},
 
                 {"role": "system",
-                 "content": "{\"info of next message\": {\"name\": \"Unknown_12356987512\", \"user ID\": 12356987512}}"},
+                 "content": "{\"info of next message\": {\"user ID\": 12356987512, \"name\": \"Unknown_12356987512\"}}"},
                 {"role": "user", "content": "Hi there", "name": "12356987512"},
                 {"role": "assistant",
                  "content": "{\"feeling\": \"neutral\"} Hi there, nice to meet you. May I have your name please?"},
 
                 {"role": "system",
-                 "content": "{\"info of next message\": {\"name\": \"Unknown_12356987512\", \"user ID\": 12356987512}}"},
+                 "content": "{\"info of next message\": {\"user ID\": 12356987512, \"name\": \"Unknown_12356987512\"}}"},
                 {"role": "user", "content": "Of course! You can call me Gura.", "name": "12356987512"},
                 {"role": "assistant",
                  "content": "{\"feeling\": \"neutral\", \"add_name\": \"Gura\"} Hi Gura, nice to meet you too"},
 
                 {"role": "system",
-                 "content": "{\"info of next message\": {\"name\": \"Gura\", \"user ID\": 12356987512}}"},
+                 "content": "{\"info of next message\": {\"user ID\": 12356987512, \"name\": \"Gura\"}}"},
                 {"role": "user", "content": "Oh you can also call me Goo", "name": "12356987512"},
                 {"role": "assistant",
                  "content": "{\"feeling\": \"neutral\", \"add_name\": \"Goo\"} Goo, sounds cute. What a nice name!"},
 
-                {"role": "system", "content": "{\"info of next message\": {\"name\": \"Gura\", "
-                                              "\"alternative names\": [\"Goo\"], \"user ID\": 12356987512}}"},
+                {"role": "system",
+                 "content": "{\"info of next message\": {\"user ID\": 12356987512, \"name\": \"Gura\", "
+                            "\"alternative names\": [\"Goo\"]}}"},
                 {"role": "user", "content": "Actually my real name is not Gura, my name is Geoty",
                  "name": "12356987512"},
                 {"role": "assistant",
                  "content": "{\"feeling\": \"happy\", \"del_name\": \"Gura\", \"add_name\": \"Geoty\"} Oh I see. "
                             "I will call you Goo then, it sounds adorable."},
 
-                {"role": "system", "content": "{\"info of next message\": {\"name\": \"Goo\", "
-                                              "\"alternative names\": [\"Geoty\"], \"user ID\": 12356987512}}"},
+                {"role": "system",
+                 "content": "{\"info of next message\": {\"user ID\": 12356987512, \"name\": \"Goo\", "
+                            "\"alternative names\": [\"Geoty\"]}}"},
                 {"role": "user", "content": "Can you ask Yatty if he is at home?",
                  "name": "12356987512"},
                 {"role": "assistant",
                  "content": "{\"feeling\": \"happy\", \"reach\": \"Yatty\", \"reach_reason\": \"ask Yatty if he "
                             "is at home\"} Sure! I will send a message to him right away."},
 
-                {"role": "system", "content": "{\"info of next message\": {\"name\": \"Vibe\", "
-                                              "\"alternative names\": [], \"user ID\": 145566785}}"},
+                {"role": "system", "content": "{\"info of next message\": {\"user ID\": 145566785, \"name\": \"Vibe\", "
+                                              "\"alternative names\": []}}"},
                 {"role": "user", "content": "Hey, fuck you!",
                  "name": "145566785"},
                 {"role": "assistant",
