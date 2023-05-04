@@ -103,7 +103,7 @@ def get_chat_response(key: str, msg: Union[str, dict], stop_list: list = None,
 
 
 if __name__ == '__main__':
-    from presets import BUILTIN_PRIVATE_PRESET, BUILTIN_GROUP_PRESET, BUILTIN_PRIVATE_NSFW_PRESET
+    from builtin_basic_presets import BUILTIN_PRIVATE_PRESET, BUILTIN_GROUP_PRESET, BUILTIN_PRIVATE_NSFW_PRESET
     import json
 
     USE_35 = True
@@ -122,7 +122,7 @@ if __name__ == '__main__':
                                               "in JSON text format at the head of your message.\n"
                                               "You should always ask for name if you don't know one's name (or his "
                                               "name is unkown in record), otherwise you can create a name but ask if "
-                                              "it is appropriate.".format(BUILTIN_GROUP_PRESET)},
+                                              "it is appropriate.".format(BUILTIN_PRIVATE_NSFW_PRESET)},
                 # {"role": "user", "content": BUILTIN_GROUP_PRESET, 'name': 'Icy'},
                 # {"role": "assistant",
                 #  "content": "{\"feeling\": \"neutral\"} Yes I will obey everything you said above. "
@@ -179,7 +179,7 @@ if __name__ == '__main__':
             ]
             status = True
             first = True
-            name = "Unkown_1133523234"
+            name = "Icy"
             while True:
                 if status:
                     if first:
@@ -193,7 +193,7 @@ if __name__ == '__main__':
                                             "name": name,
                                             "alternative names": [],
                                             "user ID": 1133523234,
-                                            "previous impression": "unknown since you never met before"
+                                            "previous impression": "You are very close friends and share secretes, sometimes interact with sexual activities."
                                         }
                                     }
                                 )
