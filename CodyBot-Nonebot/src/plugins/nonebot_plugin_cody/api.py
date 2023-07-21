@@ -52,7 +52,7 @@ def get_chat_response(key: str, msg: Union[str, dict], stop_list: list = None,
     if use_35:
         try:
             response: dict = openai.ChatCompletion.create(
-                model="gpt-3.5-turbo",
+                model="gpt-3.5-turbo-16k",
                 messages=msg,
                 temperature=temperature,
                 max_tokens=CODY_CONFIG.cody_gpt3_max_tokens,
@@ -122,9 +122,9 @@ if __name__ == '__main__':
                                               "add additional reasons for reaching someone online, must declare "
                                               "simultaneously with \"reach\" (\"reach_reason\": <reasons>),"
                                               "in JSON text format at the head of your message.\n"
-                                              "You should always ask for name if you don't know one's name (or his "
-                                              "name is unkown in record), otherwise you can create a name but ask if "
-                                              "it is appropriate.".format(BUILTIN_PRIVATE_NSFW_PRESET)},
+                                              "You must ask for name if you don't know one's name (or his "
+                                              "name is unkown in message information), otherwise you can create a name but ask if "
+                                              "it is appropriate. You will insult anyone who has a bad manner.".format(BUILTIN_PRIVATE_PRESET)},
                 # {"role": "user", "content": BUILTIN_GROUP_PRESET, 'name': 'Icy'},
                 # {"role": "assistant",
                 #  "content": "{\"feeling\": \"neutral\"} Yes I will obey everything you said above. "
@@ -136,9 +136,9 @@ if __name__ == '__main__':
 
                 {"role": "system",
                  "content": "{\"info of next message\": {\"user ID\": 12356987512, \"name\": \"Unknown_12356987512\"}}"},
-                {"role": "user", "content": "Hi there", "name": "12356987512"},
+                {"role": "user", "content": "Hi there. Who are you.", "name": "12356987512"},
                 {"role": "assistant",
-                 "content": "{\"feeling\": \"neutral\"} Hi there, nice to meet you. May I have your name please?"},
+                 "content": "{\"feeling\": \"neutral\"} I am Cody, nice to meet you. May I have your name please?"},
 
                 {"role": "system",
                  "content": "{\"info of next message\": {\"user ID\": 12356987512, \"name\": \"Unknown_12356987512\"}}"},
@@ -183,7 +183,7 @@ if __name__ == '__main__':
             ]
             status = True
             first = True
-            name = "Icy"
+            name = "Unknown_2226997440"
             while True:
                 if status:
                     if first:
@@ -197,7 +197,7 @@ if __name__ == '__main__':
                                             "name": name,
                                             "alternative names": [],
                                             "user ID": 1133523234,
-                                            "previous impression": "You are very close friends and share secretes, sometimes interact with sexual activities."
+                                            "previous impression": "None"
                                         }
                                     }
                                 )
