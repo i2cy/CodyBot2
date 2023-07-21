@@ -6,20 +6,21 @@
 # Created on: 2022/12/27
 
 import base64
-from nonebot import on_message
+from nonebot import on_message, on_command, get_bot
 from nonebot.adapters.onebot import V12Bot as Bot
 from nonebot.adapters.onebot.v12 import Message, MessageEvent, PrivateMessageEvent, MessageSegment, GroupMessageEvent
 from nonebot_plugin_htmlrender import md_to_pic
 
 from .addons import CommandAddon, ReminderAddon
 from .config import *
-from .presets import BUILTIN_PRIVATE_PRESET, BUILTIN_GROUP_PRESET, BUILTIN_PRIVATE_NSFW_PRESET
-from .session import CREATOR_ID, CREATOR_GF_ID
+from .builtin_basic_presets import BUILTIN_PRIVATE_PRESET, BUILTIN_GROUP_PRESET, BUILTIN_PRIVATE_NSFW_PRESET
+from .session import CREATOR_ID, CREATOR_GF_ID, SessionGPT35
 from .api import get_chat_response, CODY_HEADER, ANONYMOUS_HUMAN_HEADER
 from .session import SessionGPT3, INVALID_APIs
+from .userdata import Impression
 
-REGISTERED_ADDONS = [CommandAddon, ReminderAddon]
-# REGISTERED_ADDONS = []
+# REGISTERED_ADDONS = [CommandAddon, ReminderAddon]
+REGISTERED_ADDONS = []
 
 user_session = {}
 group_session = {}
@@ -27,16 +28,34 @@ group_session = {}
 user_lock = {}
 group_lock = {}
 
+impression_database = None
 
-def get_user_session(user_id, name=None) -> SessionGPT3:
+Bot.set_group_name()
+def get_user_session(user_id, name=None) -> SessionGPT35:
     if user_id not in user_session:
-        user_session[user_id] = SessionGPT3(user_id, username=name, addons=REGISTERED_ADDONS)
+        user_session[user_id] = SessionGPT35(
+            user_id,
+            is_group=False,
+            name=name,
+            addons=REGISTERED_ADDONS,
+            impression_db=impression_database
+        )
     return user_session[user_id]
 
 
-def get_group_session(group_id) -> SessionGPT3:
+def dump_user_session(user_id) -> bool:
+    memory_dir = Path(CODY_CONFIG.cody_session_cache_dir)
+    if user_id not in user_session:
+        return False
+    session_dumps = user_session[user_id].dump(use_base64=True)
+    with open(memory_dir.joinpath(f"user_{str(user_id)}.session").as_posix()) as f:
+        f.write(session_dumps.encode())
+    return True
+
+
+def get_group_session(group_id) -> SessionGPT35:
     if group_id not in group_session:
-        group_session[group_id] = SessionGPT3(group_id, is_group=True, addons=REGISTERED_ADDONS)
+        group_session[group_id] = SessionGPT35(group_id, is_group=True, addons=REGISTERED_ADDONS)
     return group_session[group_id]
 
 
@@ -198,15 +217,22 @@ async def _get_gpt_response(bot: Bot, event: PrivateMessageEvent):
 
 # Cody初始化
 def cody_init():
-    pass
+    global impression_database
+    # initialize impression database
+    database_path = Path(CODY_CONFIG.cody_session_cache_dir).joinpath("impressions.db").as_posix()
+    impression_database = Impression(database_path)
 
 
 # 安全关闭
 def cody_stop():
+    memory_dir = Path(CODY_CONFIG.cody_session_cache_dir)
+    # kill and save all user session
     for ele in user_session:
         user_session[ele].kill()
+    # kill and save all group session
     for ele in group_session:
         group_session[ele].kill()
+
 
 
 DRIVER.on_startup(cody_init)

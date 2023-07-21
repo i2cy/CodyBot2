@@ -6,19 +6,19 @@
 # Created on: 2023/1/31
 
 import asyncio
+import base64
 import threading
 import time
-import tiktoken
-from transformers import GPT2TokenizerFast
+from hashlib import sha256
 from .config import *
-from .presets import BUILTIN_PRIVATE_PRESET, BUILTIN_GROUP_PRESET
+from .builtin_basic_presets import BUILTIN_PRIVATE_PRESET, BUILTIN_GROUP_PRESET
 from .api import get_chat_response, CODY_HEADER, ANONYMOUS_HUMAN_HEADER
 from .userdata import Impression, ImpressionFrame
+from .memory import Memory
 
-CREATOR_ID = 2226997440
-CREATOR_GF_ID = 2739097870
+CREATOR_ID = "80b3456f5f8398d38d659e2d2930e26544a61f0482180d00161cae78171d8d60"
+CREATOR_GF_ID = "fa06dac2564d6b1995467e83c31e270b69de53160ce4c26ca913e28ea3a8669a"
 
-TOKENIZER = GPT2TokenizerFast.from_pretrained("gpt2")
 API_INDEX = -1
 INVALID_APIs = []
 PUNCTUATION_SETS = {"。", "！", "？", ".", "!", "?", ";", "；", "……", "~", "~"}
@@ -55,9 +55,10 @@ class SessionGPT3:
 
         # initialize preset and username when in private chat
         else:
-            if id == CREATOR_ID:  # creator detection
+            id_sha256 = sha256(str(id).encode()).hexdigest()
+            if id_sha256 == CREATOR_ID:  # creator detection
                 username = "Icy"
-            elif id == CREATOR_GF_ID:  # creator's GF detection
+            elif id_sha256 == CREATOR_GF_ID:  # creator's GF detection
                 username = "Miuto"
             else:
                 if username is not None:  # in case someone fake as an administrator
@@ -209,7 +210,7 @@ class SessionGPT3:
     def generate_prompts(self, preset, status_header, time_header, human_header, msg) -> (int, str):
         prompt = preset + status_header + "\n" + ''.join(self.conversation) + time_header + human_header + msg
 
-        token_len = len(TOKENIZER.encode(prompt))
+        token_len = len(prompt)
         logger.debug("[session {}] Using token: {}".format(self.session_id, token_len))
 
         # 检查长度
@@ -223,7 +224,7 @@ class SessionGPT3:
             del self.conversation_ts[0]
             prompt = preset + "\n" + status_header + "\n" + \
                      ''.join(self.conversation) + time_header + human_header + msg
-            token_len = len(TOKENIZER.encode(prompt))
+            token_len = len(prompt)
 
         return token_len, prompt
 
@@ -375,21 +376,39 @@ class SessionGPT35:
         self.name = name
         self.addons = addons
         self.impression = impression_db
+        self.bot = None
 
         # threading
         self.live = True
         self.threads = []
 
         # storage ables
-        self.registered_alarms = []  # registered alarms, (format: [timestamp, string to execute], e.g. [])
 
+        # registered alarms, (format: [timestamp, string to execute])
+        # executive must set ADDON_NAME of addon to call and ALARM_ARGS
+        # of its alarm_callback method e.g.:
+        #
+        # # this is the test addons registered
+        # class TestAddon(AddonBase):
+        #     addon_name: str = "test_addon"
+        #     def alarm_callback(group_id, message):
+        #         self.session.bot.send_group_message(group_id, message)
+        # # this is executive string example
+        # """
+        # ADDON_NAME = "test_addon"
+        # ALARM_ARGS = (1222333444, "this is a test")
+        # """
+        self.registered_alarms = []
+        self.conversation = Memory()
 
-    def dump(self, base64: bool = True) -> str:
+    def dump(self, use_base64: bool = True) -> str:
         """
         dump current session status to str
-        :param base64: bool, use base64 to encode data
+        :param use_base64: bool, use base64 to encode data
         :return: str
         """
+
+        base64.b64encode()
 
 
     def load(self, status_str: str):

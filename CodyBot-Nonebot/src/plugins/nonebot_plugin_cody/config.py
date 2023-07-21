@@ -16,13 +16,12 @@ from nonebot.log import logger
 
 class Config(BaseSettings):
 
-    cody_session_cache_path: str = "cache/session.json"
+    cody_session_cache_dir: str = "memory/"
     cody_gpt3_apikey_path: str = "configs/gpt3_api.yml"
     cody_api_proxy: str = ""
     cody_gpt3_max_tokens: int = 400
     cody_max_session_tokens: int = 2048
     cody_session_forget_timeout: int = 3600
-    cody_use_gpt3: int = 1
 
     class Config:
         extra = "ignore"
@@ -43,8 +42,8 @@ if not Path(CODY_CONFIG.cody_gpt3_apikey_path).exists():
 # 创建路径
 LOCAL_CACHE = Path() / "cache"
 LOCAL_CACHE.mkdir(exist_ok=True)
-if not Path(CODY_CONFIG.cody_session_cache_path).exists():
-    with open(CODY_CONFIG.cody_session_cache_path, 'w', encoding='utf-8') as f:
+if not Path(CODY_CONFIG.cody_session_cache_dir).exists():
+    with open(CODY_CONFIG.cody_session_cache_dir, 'w', encoding='utf-8') as f:
         f.close()
 
 # 读取api密钥
