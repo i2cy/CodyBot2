@@ -51,7 +51,7 @@ Cody是一只可爱的小马。
     PORT=8089                                           # 监听端口
     SUPERUSER=["1234567890"]                            # nonebot2 的超管(也可理解为bot的主人什么的)
       
-    cody_session_cache_path = "cache"                   # 缓存路径
+    cody_session_cache_dir = "memory/"                   # 缓存路径
     cody_gpt3_apikey_path = "configs/gpt3_api.yml"      # api文件的路径
     cody_gpt3_max_tokens = 500                          # 最大返回值长度
     cody_max_session_tokens = 2000                      # 最大连续对话长度

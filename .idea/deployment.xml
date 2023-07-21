@@ -12,7 +12,7 @@
       <paths name="CodyBot on I2APP">
         <serverdata>
           <mappings>
-            <mapping deploy="/home/icy/CloudProjects/CodyBot2" local="$PROJECT_DIR$" web="/" />
+            <mapping deploy="/home/icy/Servers/CodyBot2" local="$PROJECT_DIR$" web="/" />
           </mappings>
         </serverdata>
       </paths>
@@ -26,14 +26,7 @@
       <paths name="icy@i2cy.tech:2203 password">
         <serverdata>
           <mappings>
-            <mapping deploy="/home/icy/Servers/CodyBot2" local="$PROJECT_DIR$" />
-          </mappings>
-        </serverdata>
-      </paths>
-      <paths name="icy@i2cy.tech:2203 password (2)">
-        <serverdata>
-          <mappings>
-            <mapping deploy="/home/icy/Servers/CodyBot2" local="$PROJECT_DIR$" />
+            <mapping deploy="/home/icy/CloudProjects/CodyBot2" local="$PROJECT_DIR$" />
           </mappings>
         </serverdata>
       </paths>

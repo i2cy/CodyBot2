@@ -7,7 +7,6 @@
     <orderEntry type="jdk" jdkName="CodyBot on I2APP (sftp://icy@i2cy.tech:2203/home/icy/.anaconda/envs/CodyBot/bin/python3)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="module" module-name="NonebotPluginLockingLock" />
-    <orderEntry type="module" module-name="I2cylib" />
   </component>
   <component name="PackageRequirementsSettings">
     <option name="versionSpecifier" value="不指定版本" />
