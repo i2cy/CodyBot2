@@ -402,7 +402,7 @@ class SessionGPT35:
         # initialize a new conversation memory object
         self.conversation = Memory()
         # setup parents
-        self.conversation.set_parents(self)
+        self.conversation.set_parent(self)
         # register logger
         self.conversation.set_logger(self.log)
         # register addons
