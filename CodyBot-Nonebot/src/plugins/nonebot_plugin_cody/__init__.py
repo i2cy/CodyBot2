@@ -28,34 +28,117 @@ group_session = {}
 user_lock = {}
 group_lock = {}
 
-impression_database = None
+impression_database: Impression
 
-Bot.set_group_name()
+
+def list_session_caches(is_group: bool = False) -> dict:
+    """
+    list all session caches in cache directory
+    :param is_group: bool, 'True' - return groups only, 'False' - return users only
+    :return: dict({int ID}: {str Path})
+    """
+    memory_dir = Path(CODY_CONFIG.cody_session_cache_dir)
+    # list all files under cache directory
+    if is_group:
+        # fetch groups only
+        files = memory_dir.glob("group_*.session")
+    else:
+        # fetch users only
+        files = memory_dir.glob("user_*.session")
+
+    ret = {}
+    # parse ID from filename
+    for ele in files:
+        ele = ele.as_posix()
+        ret.update({
+            int(ele.split("_")[1][:-8]): ele
+        })
+
+    return ret
+
+
 def get_user_session(user_id, name=None) -> SessionGPT35:
+    """
+    get a user session with specific QQ ID, and create a new session if none was found in RAM
+    :param user_id: QQ ID
+    :param name: str or None, nickname of user
+    :return: SessionGPT35
+    """
     if user_id not in user_session:
+        # get user name from impression database
+        user = impression_database.get_individual(int(user_id))
+
+        # initialize a new session handler
         user_session[user_id] = SessionGPT35(
             user_id,
             is_group=False,
-            name=name,
+            name=user.name,  # use name saved in impression database
             addons=REGISTERED_ADDONS,
-            impression_db=impression_database
+            impression_db=impression_database,
+            bot=get_bot()
         )
+        # check if there is previously saved session files to load
+        files = list_session_caches(is_group=False)
+        if int(user_id) in files:
+            # open previously saved session files and load
+            with open(files[int(user_id)], 'rb') as f:
+                user_session[user_id].load(f.read().decode())
+                f.close()
+
     return user_session[user_id]
 
 
 def dump_user_session(user_id) -> bool:
+    """
+    dump specific user session to file
+    :param user_id: QQ ID
+    :return: bool, return operation status
+    """
     memory_dir = Path(CODY_CONFIG.cody_session_cache_dir)
+
     if user_id not in user_session:
+        # return False when user not found
         return False
+
+    # generate session dumps
     session_dumps = user_session[user_id].dump(use_base64=True)
-    with open(memory_dir.joinpath(f"user_{str(user_id)}.session").as_posix()) as f:
+
+    # open file and save
+    with open(memory_dir.joinpath(f"user_{str(user_id)}.session").as_posix(), 'wb') as f:
         f.write(session_dumps.encode())
+        f.close()
+
     return True
 
 
 def get_group_session(group_id) -> SessionGPT35:
+    """
+    get a group session with specific QQ ID, and create a new session if none was found in RAM
+    :param group_id: group QQ ID
+    :return: SessionGPT35
+    """
     if group_id not in group_session:
-        group_session[group_id] = SessionGPT35(group_id, is_group=True, addons=REGISTERED_ADDONS)
+        # get group name from impression database
+        group = impression_database.get_group(int(group_id))
+
+        # initialize a new session handler
+        group_session[group_id] = SessionGPT35(
+            group_id,
+            is_group=True,
+            name=group.name,
+            addons=REGISTERED_ADDONS,
+            impression_db=impression_database,
+            bot=get_bot()
+        )
+
+        # check if there is previously saved session files to load
+        files = list_session_caches(is_group=True)
+        if int(group_id) in files:
+            # open previously saved session files and load
+            with open(files[int(group_id)], 'rb') as f:
+                group_session[group_id].load(f.read().decode())
+                f.close()
+
     return group_session[group_id]
 
 
@@ -65,6 +148,8 @@ group_chat_session = on_message(priority=50, block=False, rule=to_me())
 
 @group_chat_session.handle()
 async def _get_gpt_response(bot: Bot, event: GroupMessageEvent):
+    # TODO: 重新构建此群消息处理函数
+
     msg = event.get_plaintext().strip()
     group_id = event.group_id
     session_id = group_id
@@ -155,6 +240,7 @@ private_session = on_message(priority=100, block=False)
 
 @private_session.handle()
 async def _get_gpt_response(bot: Bot, event: PrivateMessageEvent):
+    # TODO: 重构此私聊消息处理函数
     session_id = event.get_session_id()
     msg = event.get_plaintext().strip()
     user_id = event.sender.id
@@ -232,7 +318,6 @@ def cody_stop():
     # kill and save all group session
     for ele in group_session:
         group_session[ele].kill()
-
 
 
 DRIVER.on_startup(cody_init)
