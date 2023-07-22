@@ -5,9 +5,8 @@
 # Filename: addons
 # Created on: 2023/2/16
 
-# TODO: reconstruct this file into GPT-3.5 mode
-
 import time
+import json
 from nonebot import get_bot, logger
 from nonebot.adapters.onebot.v12 import Bot, MessageSegment, Message
 from .session import SessionGPT3, SessionGPT35
@@ -17,70 +16,135 @@ from .memory import Memory
 
 class AddonBase:
 
-    def __init__(self, session: SessionGPT35, presets: Memory, bot: Bot):
+    def __init__(self, session: SessionGPT35):
         """
         basic addon object parent
         :param session: SessionGPT35
-        :param presets: Memory
-        :param bot: Bot
         """
 
         self.addon_name = "AddonBase"
         self.session = session
-        self.bot = bot
+        self.bot = self.session.bot
+
+    def log(self, log_message: str):
+        """
+        add one line of log information to system logger
+        :param log_message: str
+        :return:
+        """
+        self.session.log(f'[{self.addon_name}] {log_message}')
+
+    def alarm_callback(self, *args, **kwargs):
+        """
+        basic alarm callback function. calls when registered alarm in session triggered.
+        :param args: Any
+        :param kwargs: Any
+        :return: Any
+        """
+        pass
+
+    def user_msg_post_proc_callback(self):
+        """
+        basic user message post-processing callback method. calls when a user send message to Cody
+        :return: None
+        """
+        pass
+
+    def cody_msg_post_proc_callback(self):
+        """
+        basic cody message post-processing callback method. calls when received a new feedback from gpt
+        :return: None
+        """
+        pass
 
 
-class BaseAddonManager:
+# TODO: create an default addon that used for updating user name, decode reach command, update impressions
 
-    def __init__(self, session: SessionGPT3,
-                 addon_msg: str,
-                 name_format_count: int = 2,
-                 priority: int = 10):
-        self.session = session
-        self.preset_base: str = addon_msg
-        self.subject_name: str = self.session.name
-        self.name_format_count = name_format_count
-        self.priority = priority
+class DefaultsAddon(AddonBase):
 
-    def __str__(self):
-        return self.preset_base.format(*[self.subject_name for i in range(self.name_format_count)])
+    def extract_json_from_cody_response(self) -> dict or None:
+        """
+        extract json dict from cody's message
+        :return: dict
+        """
+        # copy message content from session.conversation
+        msg = self.session.conversation.cody_msg
 
-    def __call__(self, base_preset: str) -> str:
-        ret = base_preset
-        addon = str(self)
-        if (not base_preset or base_preset[-1] != " ") and (not addon or addon[-1] != " "):
-            ret += " "
+        json_start_cnt = 0
+        json_stop_cnt = 0
+        json_range = [0, 0]
+        # locate the start and tail of json text
+        for i, ele in enumerate(msg):
+            if ele == "{":
+                if json_start_cnt == 0:
+                    json_range[0] = i
+                json_start_cnt += 1
+            elif ele == "}":
+                json_stop_cnt += 1
+                if json_stop_cnt == json_start_cnt:
+                    json_range[1] = i + 1
+                    break
 
-        return ret + addon
+        # copy json text
+        json_text = msg[json_range[0]:json_range[1]]
 
-    def set_subjects(self, subject_name):
-        self.subject_name = subject_name
+        # decode and transfer
+        ret = None
+        if len(json_text):
+            try:
+                ret = json.loads(json_text)
+            except Exception as err:
+                # log error when failed to decode json and return None
+                self.log("[ERROR] failed to decode json text from Cody's response, {}, json text: {}".format(
+                    err, json_text
+                ))
 
-    def update_status_callback(self, status_text: str) -> str:
-        return status_text
+        return ret
 
-    def update_response_callback(self, resp: str) -> str:
-        return resp
+    def cody_msg_post_proc_callback(self):
+        """
+        decode emotion feelings, name update
+        :return: None
+        """
+        # try to get json text from
+        res = self.extract_json_from_cody_response()
 
-    def update_input_callback(self, input: str) -> str:
-        return input
+        if res is None:
+            # if no json message decoded, skip
+            return
+
+        # get essential information of conversation
+        is_group = self.session.is_group
+        user_id = self.session.conversation.cody_msg_extra['user_id']
+        timestamp = self.session.conversation.cody_msg_extra['timestamp']
+        group_id = self.session.id
+
+        # decode keywords
+        for key in res:
+            if key == "feeling":
+                # feeling process
+                # TODO: add feeling processing system
+                pass
+            elif key == "add_name":
+                # update name in impression database
+                old_frame = self.session.impression.get_individual(user_id)
+
+                if "UNKNOWN" in old_frame.name.upper():
+                    # if user's name is unknown, replace it with current updated name
+                    self.session.impression.update_individual(user_id, name=res[key])
+                else:
+                    # else alter the old name to alternatives
+                    self.session.impression.update_individual(
+                        user_id,
+                        name=res[key],
+                        alternatives=old_frame.alternatives.append(old_frame.name)
+                    )
 
 
-class CommandAddon(BaseAddonManager):
 
-    def __init__(self, session_class):
-        addon_text = "An programmatic command is a text which must be placed separately in square brackets before " \
-                     "Cody's reply. Multiple programmatic command can be placed at the same time separately. " \
-                     "programmatic command formatted text should always uses half-width characters and no space " \
-                     "between parameters. Cody will never try to ask others to use programmatic command or even talk " \
-                     "about it. programmatic command text can only be added to reply in condition of below. Never " \
-                     "quoting an programmatic command or its usage."
 
-        if session_class.is_group:
-            super().__init__(session_class, "", name_format_count=0, priority=2)
-        else:
-            super().__init__(session_class, addon_text, name_format_count=0, priority=2)
 
+# TODO: reconstruct ReminderAddon to fit new addon base
 
 class ReminderAddon(BaseAddonManager):
 
