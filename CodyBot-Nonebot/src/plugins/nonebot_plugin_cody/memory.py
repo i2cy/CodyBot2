@@ -108,7 +108,7 @@ class Memory(BaseModel):
     cody_msg_post_proc: list = []  # list of functions that will be called every time parsing a GPTResponse
 
     logger: None = None
-    session: GPTResponse = None
+    session: SessionGPT35 = None
 
     def set_parent(self, session: SessionGPT35):
         """
