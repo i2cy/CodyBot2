@@ -12,8 +12,10 @@ from pydantic import BaseModel
 
 if __name__ == "__main__":
     from utils import GPTResponse, TimeStamp
+    from session import SessionGPT35
 else:
     from .utils import GPTResponse, TimeStamp
+    from .session import SessionGPT35
 
 
 class ExtraTypes:
@@ -106,6 +108,15 @@ class Memory(BaseModel):
     cody_msg_post_proc: list = []  # list of functions that will be called every time parsing a GPTResponse
 
     logger: None = None
+    session: GPTResponse = None
+
+    def set_parent(self, session: SessionGPT35):
+        """
+        set parent session class for memory class
+        :param session: SessionGPT35
+        :return:
+        """
+        self.session = session
 
     def set_max_token_limit(self, max_token_limit: int):
         """
@@ -130,7 +141,7 @@ class Memory(BaseModel):
         :return:
         """
         if self.logger is not None:
-            self.logger(log_message)
+            self.logger(f'[memory] {log_message}')
 
     def __save_and_clear_temp_msg(self):
         """
