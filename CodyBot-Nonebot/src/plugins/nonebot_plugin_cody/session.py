@@ -10,6 +10,7 @@ import base64
 import threading
 import time
 from hashlib import sha256
+from nonebot.adapters.onebot import V12Bot as Bot
 from .config import *
 from .builtin_basic_presets import BUILTIN_PRIVATE_PRESET, BUILTIN_GROUP_PRESET
 from .api import get_chat_response, CODY_HEADER, ANONYMOUS_HUMAN_HEADER
@@ -23,7 +24,7 @@ API_INDEX = -1
 INVALID_APIs = []
 PUNCTUATION_SETS = {"。", "！", "？", ".", "!", "?", ";", "；", "……", "~", "~"}
 
-
+# TODO: 移除旧版本GPT3的会话对象
 class SessionGPT3:
     def __init__(self, id, is_group=False, username=None, addons=None):
         """
@@ -111,10 +112,6 @@ class SessionGPT3:
         self.users = {}
         self.conversation = []
         self.conversation_ts = []
-
-    def dump(self) -> dict:
-        # TODO: add session dump function to save files
-        pass
 
     def kill(self):
         """
@@ -361,7 +358,8 @@ class SessionGPT3:
 class SessionGPT35:
     def __init__(self, id: int, is_group: bool = False,
                  name: str = None, addons: list = None,
-                 impression_db: Impression = None):
+                 impression_db: Impression = None,
+                 bot: Bot = None):
         """
         chat session of Cody using GPT-3.5
         :param id: int, usually QQ ID
@@ -369,14 +367,15 @@ class SessionGPT35:
         :param name: str, default username or group name, will be overriden by impression data
         :param addons: list, list of addon objects with standard BaseAddon parent in addons.py
         :param impression_db: Impression, impression database interface
+        :param bot: Bot, bot with onebot standard
         """
         # statics
         self.id = id
         self.is_group = is_group
         self.name = name
-        self.addons = addons
+        self.addons = [obj(self) for obj in addons]  # initialize addon object with session object
         self.impression = impression_db
-        self.bot = None
+        self.bot: Bot = bot
 
         # threading
         self.live = True
@@ -399,7 +398,36 @@ class SessionGPT35:
         # ALARM_ARGS = (1222333444, "this is a test")
         # """
         self.registered_alarms = []
+
+        # initialize a new conversation memory object
         self.conversation = Memory()
+        # setup parents
+        self.conversation.set_parents(self)
+        # register logger
+        self.conversation.set_logger(self.log)
+        # register addons
+        self.conversation.user_msg_post_proc = [func.user_msg_post_proc_callback for func in self.addons]
+        self.conversation.cody_msg_post_proc = [func.cody_msg_post_proc_callback for func in self.addons]
+
+    def log(self, message: str):
+        """
+        log information to system logger
+        :param message: str
+        :return:
+        """
+        label = "User"
+        if self.is_group:
+            label = "Group"
+
+        logger.info(f"[{label}_{self.id}] {message}")
+
+    def set_bot(self, bot: Bot):
+        """
+        set bot that capable with
+        :param bot: Bot
+        :return:
+        """
+        self.bot = bot
 
     def dump(self, use_base64: bool = True) -> str:
         """
@@ -408,8 +436,18 @@ class SessionGPT35:
         :return: str
         """
 
-        base64.b64encode()
+        memory_json = self.conversation.to_json()
+        save = {
+            'conversations': memory_json,
+            'alarms': self.registered_alarms
+        }
+        save = json.dumps(save)
+        if use_base64:
+            ret = (b'_B64' + base64.b64encode(save)).decode()
+        else:
+            ret = save
 
+        return ret
 
     def load(self, status_str: str):
         """
@@ -417,13 +455,23 @@ class SessionGPT35:
         :param status_str: str
         :return:
         """
+        if len(status_str) > 4 and status_str[:4] == '_B64':
+            status_str = status_str[4:]
+            status_str = base64.b64decode(status_str).decode()
 
+        status = json.loads(status_str)
+        self.conversation.parse_obj(status['conversations'])
+        self.registered_alarms = status['alarms']
+        self.log(f"loaded {len(self.conversation.conversation)} conversations and {len(self.registered_alarms)} "
+                 f"registered alarms from previously saved session")
 
     def alarm_trigger_thread(self):
         """
         timed event sub thread
         :return:
         """
+        # TODO: 重新构建此定时事件处理线程循环
+
         logger.info("[session {}] sub thread started".format(self.session_id))
         cnt = 0
         while self.live:
@@ -465,8 +513,14 @@ class SessionGPT35:
         reset current session and its memory, will not affect impression data
         :return:
         """
+        # TODO: 完成会话reset方法
 
-    async def get_chat_response(self, msg, user_id: int = None, user_name: str = None) -> str:
+    async def get_chat_response(self, msg,
+                                user_id: int = None,
+                                user_name: str = None,
+                                group_id: int = None) -> str:
+        # TODO: 重新构建此GPT反馈获取函数
+
         if user_id is not None or user_name is not None:
             if user_id == CREATOR_ID:
                 user_name = "Icy"
