@@ -13,6 +13,8 @@ from pydantic import BaseModel
 if __name__ == "__main__":
     class CODY_CONFIG:
         cody_session_cache_path = "./"
+
+
     from utils import TimeStamp
 else:
     from .config import CODY_CONFIG
@@ -28,6 +30,7 @@ class ImpressionFrame(BaseModel):
     last_interact_session_ID: int
     last_interact_session_is_group: str
     additional_json: dict
+    title: str
     is_group: bool
 
 
@@ -62,6 +65,7 @@ class Impression(SqliteDB):
             table.add_column('last_interact_timestamp', SqlDtype.INTEGER)
             table.add_column('last_interact_session_ID', SqlDtype.INTEGER)
             table.add_column('last_interact_session_is_group', SqlDtype.INTEGER)
+            table.add_column('title', SqlDtype.TEXT)
             table.add_column('additional_json', SqlDtype.TEXT)
             table.add_limit(0, Sqlimit.PRIMARY_KEY)
             table.add_limit(1, Sqlimit.NOT_NULL)
@@ -71,6 +75,7 @@ class Impression(SqliteDB):
             table.add_limit(5, Sqlimit.NOT_NULL)
             table.add_limit(6, Sqlimit.NOT_NULL)
             table.add_limit(7, Sqlimit.NOT_NULL)
+            table.add_limit(8, Sqlimit.NOT_NULL)
 
         if "individuals" not in self:
             new_table = NewSqlTable("individuals")
@@ -90,6 +95,7 @@ class Impression(SqliteDB):
                      last_interact_timestamp: int = None,
                      last_interact_session_ID: int = None,
                      last_interact_session_is_group: bool = None,
+                     title: str = None,
                      additional_json: str = None):
         """
         Update impression information of a group
@@ -100,6 +106,7 @@ class Impression(SqliteDB):
         :param last_interact_timestamp: int, timestamp of last interact
         :param last_interact_session_ID: int, session ID of last interact session
         :param last_interact_session_is_group: bool, whether the last interact location is
+        :param title: str, title for this group, e.g. 'creator', 'friends', 'enemy'
         :param additional_json: str, additional storage in json text, can be used for plugin storage
         :return:
         """
@@ -123,6 +130,9 @@ class Impression(SqliteDB):
             if impression is None:
                 impression = ""
 
+            if title is None:
+                title = ""
+
             if additional_json is None:
                 additional_json = "{}"
 
@@ -135,6 +145,7 @@ class Impression(SqliteDB):
                     last_interact_timestamp,  # timestamp when last interact, -1 stands for never
                     last_interact_session_ID,  # session ID of last interact, -1 stands for none
                     last_interact_session_is_group,  # weather if last interact session is a group chat
+                    title,  # title for this group, e.g. 'admin', 'close-friends', 'notice'
                     additional_json  # additional json text storage for plugins
                 ]
             )
@@ -160,6 +171,9 @@ class Impression(SqliteDB):
                 self.__groups_table.update(last_interact_session_is_group, id,
                                            'last_interact_session_is_group')
 
+            if title is not None:  # update title
+                self.__groups_table.update(title, id, 'title')
+
             if additional_json is not None:  # update additions
                 self.__groups_table.update(additional_json, id, 'additional_json')
 
@@ -183,7 +197,8 @@ class Impression(SqliteDB):
             last_interact_timestamp={"timestamp": data[4]},
             last_interact_session_ID=data[5],
             last_interact_session_is_group=data[6],
-            additional_json=json.loads(data[7]),
+            title=data[7],
+            additional_json=json.loads(data[8]),
             is_group=True
         )
 
@@ -209,7 +224,8 @@ class Impression(SqliteDB):
             last_interact_timestamp={"timestamp": data[4]},
             last_interact_session_ID=data[5],
             last_interact_session_is_group=data[6],
-            additional_json=json.loads(data[7]),
+            title=data[7],
+            additional_json=json.loads(data[8]),
             is_group=False
         )
 
@@ -221,6 +237,7 @@ class Impression(SqliteDB):
                           last_interact_timestamp: int = None,
                           last_interact_session_ID: int = None,
                           last_interact_session_is_group: bool = None,
+                          title: str = None,
                           additional_json: dict = None):
         """
         Update impression information of an individual
@@ -231,6 +248,7 @@ class Impression(SqliteDB):
         :param last_interact_timestamp: int, timestamp of last interact
         :param last_interact_session_ID: int, session ID of last interact session
         :param last_interact_session_is_group: bool, whether the last interact location is
+        :param title: str, title for this user, e.g. 'creator', 'friends', 'enemy'
         :param additional_json: dict, additional storage in json text, can be used for plugin storage
         :return:
         """
@@ -255,6 +273,9 @@ class Impression(SqliteDB):
             if impression is None:
                 impression = ""
 
+            if title is None:
+                title = ""
+
             if additional_json is None:
                 additional_json = "{}"
 
@@ -267,6 +288,7 @@ class Impression(SqliteDB):
                     last_interact_timestamp,  # timestamp when last interact, -1 stands for never
                     last_interact_session_ID,  # session ID of last interact, -1 stands for none
                     last_interact_session_is_group,  # weather if last interact session is a group chat
+                    title,  # title for this user, e.g. 'creator', 'friends', 'enemy'
                     additional_json  # additional json text storage for plugins
                 ]
             )
@@ -292,12 +314,15 @@ class Impression(SqliteDB):
                 self.__individuals_table.update(last_interact_session_is_group, id,
                                                 'last_interact_session_is_group')
 
+            if title is not None:  # update title
+                self.__individuals_table.update(title, id, 'title')
+
             if additional_json is not None:  # update additions
                 self.__individuals_table.update(additional_json, id, 'additional_json')
 
 
 if __name__ == '__main__':
-    test_file = "test.db"
+    test_file = "test_v2.db"
     test_uid = 2226997440
 
     test_db = Impression(test_file)
@@ -331,4 +356,3 @@ if __name__ == '__main__':
     #       f"additions: {a.additional_json}")
     #
     # print("test done")
-
