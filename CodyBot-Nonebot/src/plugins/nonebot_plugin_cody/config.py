@@ -15,7 +15,6 @@ from nonebot.log import logger
 
 
 class Config(BaseSettings):
-
     cody_session_cache_dir: str = "memory/"
     cody_gpt3_apikey_path: str = "configs/gpt3_api.yml"
     cody_api_proxy: str = ""
@@ -25,6 +24,24 @@ class Config(BaseSettings):
 
     class Config:
         extra = "ignore"
+
+
+class APIManager(list):
+    current_api_index: int = 0
+
+    def get_api(self) -> str:
+        """
+        return api keys in loop
+        :return: str, API key of openai
+        """
+
+        ret = self[self.current_api_index]
+
+        self.current_api_index += 1
+        if self.current_api_index >= len(self):
+            self.current_api_index = 0
+
+        return ret
 
 
 DRIVER = get_driver()
@@ -49,5 +66,7 @@ if not Path(CODY_CONFIG.cody_session_cache_dir).exists():
 # 读取api密钥
 with open(CODY_CONFIG.cody_gpt3_apikey_path, 'r', encoding='utf-8') as f:
     APIKEY_LIST = yaml.load(f, Loader=yaml.FullLoader).get('api_keys')
+    APIKEY_LIST = APIManager(APIKEY_LIST)
+    f.close()
 
 logger.info(f"加载 {len(APIKEY_LIST)}个 APIKeys")

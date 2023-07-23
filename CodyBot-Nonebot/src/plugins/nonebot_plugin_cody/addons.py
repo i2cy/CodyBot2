@@ -9,9 +9,11 @@ import time
 import json
 from nonebot import get_bot, logger
 from nonebot.adapters.onebot.v12 import Bot, MessageSegment, Message
-from .session import SessionGPT3, SessionGPT35
-from .api import CODY_HEADER
-from .memory import Memory
+from .session import SessionGPT35
+from .api import get_chat_response
+from .config import APIKEY_LIST
+from .memory import Memory, ExtraTypes
+from .utils import TimeStamp
 
 
 class AddonBase:
@@ -62,6 +64,23 @@ class AddonBase:
 
 class DefaultsAddon(AddonBase):
 
+
+    def is_silenced(self, user_id: int) -> bool:
+        """
+        return whether if selected user is silenced
+        :param user_id: int
+        :return:
+        """
+        # get user impression data frame
+        frame = self.session.impression.get_individual(user_id)
+
+        # get result
+        ret = False
+        if 'silenced' in frame.additional_json:
+            ret = frame.additional_json['silenced']
+
+        return ret
+
     def extract_json_from_cody_response(self) -> dict or None:
         """
         extract json dict from cody's message
@@ -101,6 +120,71 @@ class DefaultsAddon(AddonBase):
 
         return ret
 
+    def extract_user_id_with_no_impression_description(self) -> list:
+        """
+        extract all ID of users in conversation
+        :return: list(int user_ID)
+        """
+        users = []
+        users_with_impression = []
+        # iterate conversations for user ID and impressions
+        for i, ele in enumerate(self.session.conversation.conversation_extra):
+            if ele['type'] == ExtraTypes.user_msg_info:
+                if ele['user_id'] not in users:
+                    # if users not recorded, append it in record
+                    users.append(ele['user_id'])
+
+                # decode user info json
+                user_info = json.loads(self.session.conversation.conversation[i]['content'])
+
+                if "previous impression" in user_info:
+                    # append user with impression in conversation
+                    users_with_impression.append(ele['user_id'])
+
+        # find out users without impression
+        ret = [ele for ele in users if ele not in users_with_impression]
+
+        return ret
+
+    def user_msg_post_proc_callback(self):
+        """
+        update impression, interaction timestamp data and ensure it is in conversation
+        :return: None
+        """
+        # copy current user info
+        current_user_id = self.session.conversation.user_msg_extra['user_id']
+        current_user_name = self.session.conversation.user_msg_extra['name']
+
+        # update user interaction time and location
+        time: TimeStamp = self.session.conversation.user_msg_extra['timestamp']
+        session_id = self.session.id
+        is_group = self.session.is_group
+        self.session.impression.update_individual(
+            current_user_id,
+            last_interact_session_ID=session_id,
+            last_interact_session_is_group=is_group,
+        )
+
+
+
+        # get users without impression
+        users = self.extract_user_id_with_no_impression_description()
+
+
+
+        # update impression data for every no impression user
+        # generate list of prompts of conversation
+        prompts = self.session.conversation.to_list()
+        prompts.append(
+            {
+                'role': 'system',
+                'content': "summarise your impression of {}"
+            }
+        )
+        get_chat_response()
+
+
+
     def cody_msg_post_proc_callback(self):
         """
         decode emotion feelings, name update
@@ -139,8 +223,24 @@ class DefaultsAddon(AddonBase):
                         name=res[key],
                         alternatives=old_frame.alternatives.append(old_frame.name)
                     )
+            elif key == "del_name":
+                # delete a name from impression database
+                old_frame = self.session.impression.get_individual(user_id)
 
-
+                if res[key] == old_frame.name:
+                    # deleting current default username, and replace it with alternatives
+                    self.session.impression.update_individual(
+                        user_id,
+                        name=old_frame.alternatives[0],
+                        alternatives=old_frame.alternatives[1:]
+                    )
+                elif res[key] in old_frame.alternatives:
+                    # deleting alternative names
+                    old_frame.alternatives.remove(res[key])
+                    self.session.impression.update_individual(
+                        user_id,
+                        alternatives=old_frame.alternatives
+                    )
 
 
 

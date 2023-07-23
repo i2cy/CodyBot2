@@ -176,11 +176,16 @@ class Memory(BaseModel):
         ret = [
             {
                 "role": "system",
-                "content": json.dumps(self.user_msg_info)
+                "content": json.dumps(
+                    {
+                        "info of next message": self.user_msg_info
+                    }
+                )
             },
             {
                 "role": "user",
-                "content": self.user_msg
+                "content": self.user_msg,
+                "name": self.user_msg_info['name']
             }
         ]
 

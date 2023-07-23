@@ -142,6 +142,9 @@ def get_group_session(group_id) -> SessionGPT35:
     return group_session[group_id]
 
 
+# TODO: 添加dump_group_session
+
+
 # 基本群聊（连续对话）
 group_chat_session = on_message(priority=50, block=False, rule=to_me())
 

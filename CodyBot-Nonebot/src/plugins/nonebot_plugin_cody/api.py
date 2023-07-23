@@ -124,7 +124,7 @@ if __name__ == '__main__':
                                               "in JSON text format at the head of your message.\n"
                                               "You must ask for name if you don't know one's name (or his "
                                               "name is unkown in message information), otherwise you can create a name but ask if "
-                                              "it is appropriate. You will insult anyone who has a bad manner.".format(BUILTIN_PRIVATE_PRESET)},
+                                              "it is appropriate. You will insult anyone who has a bad manner.".format(BUILTIN_GROUP_PRESET)},
                 # {"role": "user", "content": BUILTIN_GROUP_PRESET, 'name': 'Icy'},
                 # {"role": "assistant",
                 #  "content": "{\"feeling\": \"neutral\"} Yes I will obey everything you said above. "
@@ -194,9 +194,9 @@ if __name__ == '__main__':
                                     {
                                         "info of next message": {
                                             "message time": time.strftime("%Y-%m-%d %H:%M"),
-                                            "name": name,
+                                            "username": name,
                                             "alternative names": [],
-                                            "user ID": 1133523234,
+                                            "user ID": 2226997440,
                                             "previous impression": "None"
                                         }
                                     }
@@ -212,7 +212,7 @@ if __name__ == '__main__':
                                     {
                                         "info of next message": {
                                             "message time": time.strftime("%Y-%m-%d %H:%M"),
-                                            "name": name,
+                                            "username": name,
                                             "alternative names": [],
                                             "user ID": 1133523234
                                         }
@@ -272,7 +272,7 @@ if __name__ == '__main__':
 
     test_prompts.append({
         "role": "system",
-        "content": f"summarise your impression of the person you chat above based on conversation "
+        "content": f"summarise your impression of the person you chat above now based on conversation "
                    f"and previous impression in second person and return start with "
                    f"'Your impression of {name} is'. return:"
     })

@@ -13,8 +13,6 @@ from pydantic import BaseModel
 if __name__ == "__main__":
     class CODY_CONFIG:
         cody_session_cache_path = "./"
-
-
     from utils import TimeStamp
 else:
     from .config import CODY_CONFIG
@@ -28,7 +26,7 @@ class ImpressionFrame(BaseModel):
     impression: str
     last_interact_timestamp: TimeStamp
     last_interact_session_ID: int
-    last_interact_session_is_group: str
+    last_interact_session_is_group: bool
     additional_json: dict
     title: str
     is_group: bool
@@ -336,7 +334,8 @@ if __name__ == '__main__':
           f"last_is_group: {a.last_interact_session_is_group}\n"
           f"additions: {a.additional_json}")
 
-    test_db.update_individual(test_uid, last_interact_timestamp=int(a.last_interact_timestamp + 3600))
+    test_db.update_individual(test_uid, last_interact_timestamp=int(a.last_interact_timestamp + 3600),
+                              last_interact_session_is_group=True)
 
     test_db.close()
 
