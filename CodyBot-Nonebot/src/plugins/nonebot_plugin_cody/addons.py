@@ -8,9 +8,9 @@
 import time
 import json
 from nonebot import get_bot, logger
-from nonebot.adapters.onebot.v12 import Bot, MessageSegment, Message
+from nonebot.adapters.onebot.v11 import Bot, MessageSegment, Message
 from .session import SessionGPT35
-from .api import get_chat_response
+from .api import get_chat_response, GPTResponse
 from .config import APIKEY_LIST
 from .memory import Memory, ExtraTypes
 from .utils import TimeStamp
@@ -64,10 +64,9 @@ class AddonBase:
 
 class DefaultsAddon(AddonBase):
 
-
     def is_silenced(self, user_id: int) -> bool:
         """
-        return whether if selected user is silenced
+        return whether if selected user is silenced in current session
         :param user_id: int
         :return:
         """
@@ -76,10 +75,49 @@ class DefaultsAddon(AddonBase):
 
         # get result
         ret = False
-        if 'silenced' in frame.additional_json:
-            ret = frame.additional_json['silenced']
+        flag_name = f'SI_{self.session.id}'
+        if flag_name in frame.additional_json:
+            ret = frame.additional_json[flag_name]
 
         return ret
+
+    def set_silenced(self, user_id: int):
+        """
+        set a user conversation status to silenced in current session
+        :param user_id: int
+        :return:
+        """
+        # get user impression data frame
+        frame = self.session.impression.get_individual(user_id)
+
+        flag_name = f'SI_{self.session.id}'
+        # update flag
+        frame.additional_json.update({flag_name: True})
+
+        # write modified json dict in impression database
+        self.session.impression.update_individual(
+            user_id,
+            additional_json=frame.additional_json
+        )
+
+    def set_active(self, user_id: int):
+        """
+        set a user conversation status to active which means 'not silenced' in current session
+        :param user_id: int
+        :return:
+        """
+        # get user impression data frame
+        frame = self.session.impression.get_individual(user_id)
+
+        flag_name = f'SI_{self.session.id}'
+        # update flag
+        frame.additional_json.update({flag_name: False})
+
+        # write modified json dict in impression database
+        self.session.impression.update_individual(
+            user_id,
+            additional_json=frame.additional_json
+        )
 
     def extract_json_from_cody_response(self) -> dict or None:
         """
@@ -151,43 +189,100 @@ class DefaultsAddon(AddonBase):
         update impression, interaction timestamp data and ensure it is in conversation
         :return: None
         """
+        # update status massage
+        # TODO: finish status message update for address book, and add list_individuals method in userdata
+        all_users = self.session.impression.list_individuals()
+        self.session.conversation.status_messages.update(
+            {
+                "address_book": ""
+            }
+        )
+
         # copy current user info
         current_user_id = self.session.conversation.user_msg_extra['user_id']
         current_user_name = self.session.conversation.user_msg_extra['name']
 
         # update user interaction time and location
-        time: TimeStamp = self.session.conversation.user_msg_extra['timestamp']
+        ts: TimeStamp = self.session.conversation.user_msg_extra['timestamp']
         session_id = self.session.id
         is_group = self.session.is_group
         self.session.impression.update_individual(
             current_user_id,
             last_interact_session_ID=session_id,
             last_interact_session_is_group=is_group,
+            last_interact_timestamp=int(ts)
         )
-
-
 
         # get users without impression
-        users = self.extract_user_id_with_no_impression_description()
+        no_imp_users = self.extract_user_id_with_no_impression_description()
 
+        # prepare commanding prompts
+        command = "Summarize your current impression of {} based on the previous conversation above and past " \
+                  "impressions in second person and return text start with \"Your impression of {} is\". return:"
 
+        # update impression data in impression database for every no impression user
+        for user in no_imp_users:
+            if self.is_silenced(user):
+                # skip if user is silenced in this session
+                continue
+            # get username
+            user_name = self.session.impression.get_individual(user).name
+            # generate list of prompts for openai
+            prompts = self.session.conversation.to_list()
+            # modify prompts, add system message for commanding
+            prompts.append(
+                {
+                    'role': 'system',
+                    'content': command.format(user_name, user_name)
+                }
+            )
 
-        # update impression data for every no impression user
-        # generate list of prompts of conversation
-        prompts = self.session.conversation.to_list()
-        prompts.append(
-            {
-                'role': 'system',
-                'content': "summarise your impression of {}"
-            }
-        )
-        get_chat_response()
+            feedback: GPTResponse = GPTResponse()
+            status = False
+            # generate impression text
+            for i in APIKEY_LIST:
+                feedback, status = get_chat_response(
+                    APIKEY_LIST.get_api(),
+                    prompts,
+                    temperature=0.6,
+                    frequency_p=0.1
+                )
+                if status:
+                    # break with status=True when succeed
+                    break
 
+            if status:
+                # update impression text if succeed
+                self.session.impression.update_individual(
+                    user,
+                    impression=feedback.message
+                )
+                # set silenced flag
+                self.set_silenced(user)
 
+                # log message
+                self.log("updated impression text of user {}({}), content: {}".format(
+                    user_name, user, feedback.message
+                ))
+            else:
+                # log error message
+                self.log("[ERROR] failed to update impression text for user {}({}), failed to communicate "
+                         "with OpenAI API.".format(user_name, user))
+
+        # update impression description in conversation
+        if current_user_id in no_imp_users or len(self.session.conversation) == 0:
+            self.set_active(current_user_id)
+            # update impression description in user_msg_info
+            imp = self.session.impression.get_individual(current_user_id).impression
+            self.session.conversation.user_msg_info.update(
+                {
+                    "previous impression": imp
+                }
+            )
 
     def cody_msg_post_proc_callback(self):
         """
-        decode emotion feelings, name update
+        decode emotion feelings, name update, reach someone
         :return: None
         """
         # try to get json text from
@@ -242,6 +337,8 @@ class DefaultsAddon(AddonBase):
                         alternatives=old_frame.alternatives
                     )
 
+            elif key == "reach":
+                # reach for someone else in impression database
 
 
 # TODO: reconstruct ReminderAddon to fit new addon base

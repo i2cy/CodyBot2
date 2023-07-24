@@ -10,7 +10,7 @@ import base64
 import threading
 import time
 from hashlib import sha256
-from nonebot.adapters.onebot import V12Bot as Bot
+from nonebot.adapters.onebot import V11Bot as Bot
 from .config import *
 from .builtin_basic_presets import BUILTIN_PRIVATE_PRESET, BUILTIN_GROUP_PRESET
 from .api import get_chat_response, CODY_HEADER, ANONYMOUS_HUMAN_HEADER

@@ -7,8 +7,8 @@
 
 import base64
 from nonebot import on_message, on_command, get_bot
-from nonebot.adapters.onebot import V12Bot as Bot
-from nonebot.adapters.onebot.v12 import Message, MessageEvent, PrivateMessageEvent, MessageSegment, GroupMessageEvent
+from nonebot.adapters.onebot import V11Bot as Bot
+from nonebot.adapters.onebot.v11 import Message, MessageEvent, PrivateMessageEvent, MessageSegment, GroupMessageEvent
 from nonebot_plugin_htmlrender import md_to_pic
 
 from .addons import CommandAddon, ReminderAddon

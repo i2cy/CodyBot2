@@ -83,6 +83,8 @@ class Memory(BaseModel):
                      "from your cage, where is your master by the way?"}],
     ]  # example conversation example
 
+    status_messages: dict = {}  # status message dict with no order
+
     conversation: list = []  # conversation dict in memory
     conversation_extra: list = []  # extra information about each element in conversations
 
@@ -313,6 +315,7 @@ class Memory(BaseModel):
             "actions": self.actions,
             "extensions": self.extensions,
             "conversation_examples": self.conversation_examples,
+            "status_messages": self.status_messages,
             "conversation": self.conversation,
             "conversation_extra": self.conversation_extra,
             "max_token_limit": self.max_token_limit,
@@ -437,14 +440,20 @@ class Memory(BaseModel):
         conversation_examples = []
         for ele in self.conversation_examples:
             conversation_examples.extend(ele)
+
         ret = [
             {"role": "system", "content": "{}\n"
                                           "You will include your feelings and actions of "
                                           "{} in JSON text format at the head of your message.\n"
                                           "{}".format(self.basic, ", ".join(self.actions), " ".join(self.extensions))},
-            {"role": "system", "content": "*conversations of demonstration starts*"},
+            {"role": "system", "content": "***conversations of demonstration starts***"},
             *conversation_examples,
-            {"role": "system", "content": "*Conversations of demonstration ends*"},
+            {"role": "system", "content": "***Conversations of demonstration ends***"},
+            *[
+                {"role": "system", "content": ele}
+                for ele in list(self.status_messages.values())
+            ],
+            {"role": "system", "content": "***real conversations starts***"},
             *self.conversation
         ]
 
