@@ -229,6 +229,22 @@ class Impression(SqliteDB):
 
         return ret
 
+    def list_individuals(self) -> list:
+        """
+        return all known user ID
+        :return: list
+        """
+        # get a list of ID of users from database
+        return [ele[0] for ele in self.__individuals_table.get(column_names='id')]
+
+    def list_groups(self) -> list:
+        """
+        return all known groups
+        :return: list
+        """
+        # get a list of ID of groups from database
+        return [ele[0] for ele in self.__groups_table.get(column_names='id')]
+
     def update_individual(self, id: int, name: str = None,
                           alternatives: list = None,
                           impression: str = None,
@@ -272,7 +288,7 @@ class Impression(SqliteDB):
                 impression = ""
 
             if title is None:
-                title = ""
+                title = "stranger"
 
             if additional_json is None:
                 additional_json = {}
@@ -321,7 +337,7 @@ class Impression(SqliteDB):
 
 if __name__ == '__main__':
     test_file = "test_v2.db"
-    test_uid = 2226997440
+    test_uid = 222699744022
 
     test_db = Impression(test_file)
 
@@ -336,6 +352,8 @@ if __name__ == '__main__':
 
     test_db.update_individual(test_uid, last_interact_timestamp=int(a.last_interact_timestamp + 3600),
                               last_interact_session_is_group=True)
+
+    print('listing all users in db: {}'.format(test_db.list_individuals()))
 
     test_db.close()
 

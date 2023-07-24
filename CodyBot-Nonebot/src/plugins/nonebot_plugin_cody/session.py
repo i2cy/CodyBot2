@@ -24,6 +24,7 @@ API_INDEX = -1
 INVALID_APIs = []
 PUNCTUATION_SETS = {"。", "！", "？", ".", "!", "?", ";", "；", "……", "~", "~"}
 
+
 # TODO: 移除旧版本GPT3的会话对象
 class SessionGPT3:
     def __init__(self, id, is_group=False, username=None, addons=None):
@@ -44,6 +45,9 @@ class SessionGPT3:
         self.session_id = id
         self.user_id = id
         self.time_format_text = "%Y-%m-%d %H:%M:%S %A"
+
+        # flags
+        self.is_busy = False
 
         # addon pre-initialize
         if addons is None:
@@ -103,12 +107,30 @@ class SessionGPT3:
         # run threads
         [ele.start() for ele in self.threads]
 
+    def busy_check(self, timeout=30) -> bool:
+        """
+        block if session is currently busy, return True if timeout
+        :return: bool
+        """
+        ts = time.time()  # record start timestamp
+
+        while self.is_busy:
+            time.sleep(0.02)
+            if time.time() - ts > timeout:
+                # break if timeout
+                break
+
+        return self.is_busy
+
     # 重置会话
     def reset(self):
         """
         reset current session including user's nickname, conversation short memory
         :return:
         """
+        # busy check for thread safety
+        self.busy_check()
+
         self.users = {}
         self.conversation = []
         self.conversation_ts = []

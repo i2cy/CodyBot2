@@ -14,6 +14,7 @@ from .api import get_chat_response, GPTResponse
 from .config import APIKEY_LIST
 from .memory import Memory, ExtraTypes
 from .utils import TimeStamp
+from . import get_user_session
 
 
 class AddonBase:
@@ -63,6 +64,15 @@ class AddonBase:
 # TODO: create an default addon that used for updating user name, decode reach command, update impressions
 
 class DefaultsAddon(AddonBase):
+    """
+    this addon contains following features by default:
+    1. user's name updating
+    2. user's name deletion
+    3. user's impression updating
+    4. user's impression data maintaining
+    5. address book update (in status section)
+    6. reach anyone in impression database
+    """
 
     def is_silenced(self, user_id: int) -> bool:
         """
@@ -190,11 +200,50 @@ class DefaultsAddon(AddonBase):
         :return: None
         """
         # update status massage
-        # TODO: finish status message update for address book, and add list_individuals method in userdata
         all_users = self.session.impression.list_individuals()
+        # forming information in CSV format
+        info = []
+        for user_id in all_users:
+            # fetch impression frame
+            frame = self.session.impression.get_individual(user_id)
+            ts = frame.last_interact_timestamp
+
+            # calculate duration since last contact
+            ts_now = time.time()
+            duration = ts_now - frame.last_interact_timestamp.timestamp
+
+            if duration > 63072000:
+                # if the user is never contacted (or no cantact in 2 years), skip
+                continue
+
+            # forming location text
+            if frame.last_interact_session_is_group:
+                loc = "group chat(group ID: {})".format(frame.last_interact_session_ID)
+            else:
+                loc = "private chat"
+
+            # forming time text
+            time_till_now = frame.last_interact_timestamp.till_now_str()
+
+            # assembling last contact text
+            if frame.last_interact_session_ID == -1:
+                last_contact = "no record"
+            else:
+                last_contact = "in {} {}".format(loc, time_till_now)
+
+            info.append("\"{}\",{},\"{}\",\"{}\",\"{}\"".format(
+                frame.name,  # user's name
+                frame.id,  # user QQ ID
+                frame.title,  # user's relationship to Cody
+                last_contact,  # last contact text
+                frame.impression.replace("\n", " ")  # impression text
+            ))
+
         self.session.conversation.status_messages.update(
             {
-                "address_book": ""
+                "address_book": "persons‘ information you know listed in CVS format as follows:\n"
+                                "Name,User_ID,Relationship_to_You,Last_Contact,Your_Impression_to_Him/Her\n"
+                                "{}".format("\n".join(info))
             }
         )
 
@@ -339,11 +388,35 @@ class DefaultsAddon(AddonBase):
 
             elif key == "reach":
                 # reach for someone else in impression database
+                if "reach_reason" not in res:
+                    # skip reach command without reach_reason keyword
+                    continue
+                # preprocessing username
+                username = res['reach'].upper()
+
+                matched_frames = []
+                # matching database
+                for ele in self.session.impression.list_individuals():
+                    frame = self.session.impression.get_individual(ele)
+                    if frame.name.upper() == username:
+                        matched_frames.append(frame)
+
+                if len(matched_frames) == 1:
+                    # matched one, get target session
+                    session = get_user_session(matched_frames[0].id)
+                    # TODO: finish this reach processing, basic logic:
+                    #  1. get target session
+                    #  2. modify target session conversation(add system prompts), add busy flag
+                    #  3. generate list to get Cody's response
+                    #  4. generate
+                    session =
+
+
 
 
 # TODO: reconstruct ReminderAddon to fit new addon base
 
-class ReminderAddon(BaseAddonManager):
+class ReminderAddon(AddonBase):
 
     def __init__(self, session_class):
         addon_text = "Cody will remember a schedule when {} said, and never remember a schedule that has existed in " \
