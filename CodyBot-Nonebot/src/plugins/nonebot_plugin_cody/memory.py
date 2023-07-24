@@ -7,12 +7,19 @@
 
 import json
 import time
+from typing import Any
+
 import tiktoken
 from pydantic import BaseModel
 
 if __name__ == "__main__":
     from utils import GPTResponse, TimeStamp
-    from session import SessionGPT35
+
+
+    class SessionGPT35:
+        # this is a dummy indicator class
+        def __init__(self):
+            pass
 else:
     from .utils import GPTResponse, TimeStamp
     from .session import SessionGPT35
@@ -110,7 +117,7 @@ class Memory(BaseModel):
     cody_msg_post_proc: list = []  # list of functions that will be called every time parsing a GPTResponse
 
     logger: None = None
-    session: SessionGPT35 = None
+    session: Any = None
 
     def set_parent(self, session: SessionGPT35):
         """
@@ -483,6 +490,9 @@ if __name__ == '__main__':
         {"tetetetetete": 123123},
         {"te": 123123}
     ])
+
+    test_ps.status_messages.update({'test': "this is a test system message of status",
+                                    'gggg': '123123123123 test'})
 
     print("\n".join([str(ele) for ele in test_ps.to_list()]))
     print("\n\n")
