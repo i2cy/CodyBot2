@@ -6,6 +6,7 @@
 # Created on: 2023/4/30
 
 import time
+from datetime import datetime, timedelta
 from typing import Union
 from pydantic import BaseModel
 
@@ -97,9 +98,108 @@ class TimeStamp(BaseModel):
         ret = time.strftime(strf, t_array)
         return ret
 
+    def till_now(self):
+        """
+        return time duration until now in datetime.timedelta
+        :return: tuple
+        """
+        now = datetime.now()
+        last = datetime.fromtimestamp(self.timestamp)
+
+        return now - last
+
+    def till_now_str(self) -> str:
+        """
+        return time duration in natual language such as '1 hour ago', 'this morning', 'yesterday noon', '3 days ago'
+        :return: str
+        """
+        weekdays = ('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday')
+        months = (None, 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August',
+                  'September', 'October', 'November', 'December')
+
+        # calculate duration
+        ts_now = time.time()
+        duration = ts_now - self.timestamp
+
+        now = datetime.fromtimestamp(ts_now)
+        last = datetime.fromtimestamp(self.timestamp)
+
+        time_till_now = now - last
+
+        delta_days = now.toordinal() - last.toordinal()
+        delta_years = now.year - last.year
+
+        if duration < 60:
+            # just now
+            duration_text = "just now"
+
+        elif duration < 3600:
+            # if less than 1 hour
+            duration_text = "{} minute(s) ago".format(time_till_now.seconds // 60)
+
+        elif duration < 14400:
+            # if less than 4 hours
+            duration_text = "{:.1f} hours ago".format(time_till_now.seconds / 3600)
+
+        elif delta_days < 2:
+            # if less than 2 days
+            if delta_days == 0:
+                # today
+                duration_text = "today "
+            else:
+                # yesterday
+                duration_text = "yesterday "
+
+            if last.hour < 6:
+                duration_text += "the small hours"
+            elif last.hour < 11:
+                duration_text += "morning"
+            elif last.hour < 13:
+                duration_text += "noon"
+            elif last.hour < 17:
+                duration_text += "afternoon"
+            elif last.hour < 21:
+                duration_text += "evening"
+            else:
+                duration_text += "night"
+
+        elif delta_days < (now.weekday() + 1):
+            # this week
+            duration_text = "{} days ago on {}".format(delta_days, weekdays[last.weekday()])
+
+        elif delta_days < now.day:
+            # this month
+            duration_text = "{} days ago".format(delta_days)
+
+        elif (delta_years == 0 and now.month - last.month < 2) \
+                or (delta_years == 1 and now.month - last.month == -11):
+            # last month
+            duration_text = "last month"
+
+        elif delta_years == 0:
+            # this year
+            duration_text = "{} months ago in {}".format(now.month - last.month, months[last.month])
+
+        elif delta_years == 1:
+            # last year
+            duration_text = "last {}".format(months[last.month])
+
+        else:
+            # years ago
+            duration_text = "{} years ago".format(delta_years)
+
+        return duration_text
+
 
 if __name__ == '__main__':
     ts = TimeStamp(time.time())
     print("current date time:", ts)
-    ts -= 8 * 3600
-    print("current UTC time:", ts)
+    for i in range(40):
+        if i < 18:
+            ts -= 1200 * i
+        elif i < 30:
+            ts -= 3600 * i * 0.9 * i
+        else:
+            ts -= 3600 * i * 2 * i
+        print("offset time:", ts)
+        print("till now:", ts.till_now_str())
