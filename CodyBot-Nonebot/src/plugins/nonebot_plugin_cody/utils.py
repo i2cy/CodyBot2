@@ -10,6 +10,9 @@ from datetime import datetime, timedelta
 from typing import Union
 from pydantic import BaseModel
 
+CREATOR_ID = "80b3456f5f8398d38d659e2d2930e26544a61f0482180d00161cae78171d8d60"
+CREATOR_GF_ID = "fa06dac2564d6b1995467e83c31e270b69de53160ce4c26ca913e28ea3a8669a"
+
 
 class Usage(BaseModel):
     completion_tokens: int = -1

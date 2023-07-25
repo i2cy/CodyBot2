@@ -32,9 +32,9 @@ else:
 
 
 def get_chat_response(key: str, msg: Union[str, dict], stop_list: list = None,
-                      temperature: float = 0.7,
-                      frequency_p: float = 0.0,
-                      presence_p: float = 0.4,
+                      temperature: float = 0.6,
+                      frequency_p: float = 0.05,
+                      presence_p: float = 0.0,
                       use_35: bool = True) -> tuple:
     """
     get openai API response
@@ -183,7 +183,7 @@ if __name__ == '__main__':
             ]
             status = True
             first = True
-            name = "Unknown_2226997440"
+            name = "Icy"
             while True:
                 if status:
                     if first:
@@ -195,9 +195,10 @@ if __name__ == '__main__':
                                         "info of next message": {
                                             "message time": time.strftime("%Y-%m-%d %H:%M"),
                                             "username": name,
-                                            "alternative names": [],
+                                            "alternative names": ['ccy', '吸吸歪'],
                                             "user ID": 2226997440,
-                                            "previous impression": "None"
+                                            "previous impression": "Your impression to Icy is that he is your creator,"
+                                                                   " you love spending time with him."
                                         }
                                     }
                                 )

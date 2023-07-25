@@ -357,6 +357,10 @@ class DefaultsAddon(AddonBase):
                 # update name in impression database
                 old_frame = self.session.impression.get_individual(user_id)
 
+                if res[key].upper in [old_frame.name, *old_frame.alternatives]:
+                    # skip if the name already exists
+                    continue
+
                 if "UNKNOWN" in old_frame.name.upper():
                     # if user's name is unknown, replace it with current updated name
                     self.session.impression.update_individual(user_id, name=res[key])
@@ -409,7 +413,16 @@ class DefaultsAddon(AddonBase):
                     #  2. modify target session conversation(add system prompts), add busy flag
                     #  3. generate list to get Cody's response
                     #  4. generate
-                    session =
+                    session = get_user_session(matched_frames[0].id)
+
+                elif len(matched_frames) > 1:
+                    # matched multiple, ask cody to contact which
+                    # TODO: finish reach processing when multiple user matched in database, basic logic:
+                    #  1. modify current session conversation(add system prompts of listed matched users), add busy flag
+                    #  2. generate list to get Cody's structured response
+                    #  3. if Cody is not sure, ask user to contact which
+                    #  4. get target session or cancel
+                    pass
 
 
 

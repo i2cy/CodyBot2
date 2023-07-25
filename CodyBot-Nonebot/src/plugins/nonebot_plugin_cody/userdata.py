@@ -9,14 +9,15 @@ import json
 from i2cylib.database.sqlite import SqliteDB, SqlTable, SqlDtype, Sqlimit, NewSqlTable
 from pathlib import Path
 from pydantic import BaseModel
+from hashlib import sha256
 
 if __name__ == "__main__":
     class CODY_CONFIG:
         cody_session_cache_path = "./"
-    from utils import TimeStamp
+    from utils import TimeStamp, CREATOR_ID, CREATOR_GF_ID
 else:
     from .config import CODY_CONFIG
-    from .utils import TimeStamp
+    from .utils import TimeStamp, CREATOR_ID, CREATOR_GF_ID
 
 
 class ImpressionFrame(BaseModel):
@@ -269,11 +270,29 @@ class Impression(SqliteDB):
 
         # when line with given id is not in table
         if id not in self.__individuals_table:
+            id_hash = sha256(str(id).encode()).hexdigest()
+
             if name is None:
-                name = f"Unknown_{id}"
+                if id_hash == CREATOR_ID:
+                    # creator auto-correction
+                    name = "Icy"
+                elif id_hash == CREATOR_GF_ID:
+                    # creator's girl auto-correction
+                    name = "Miuto"
+                else:
+                    # anonymous
+                    name = f"Unknown_{id}"
 
             if alternatives is None:
-                alternatives = "[]"
+                if id_hash == CREATOR_ID:
+                    # creator auto-correction
+                    alternatives = json.dumps(['艾昔', 'ccy', '吸吸歪'])
+                elif id_hash == CREATOR_GF_ID:
+                    # creator's girl auto-correction
+                    alternatives = json.dumps(['猫条'])
+                else:
+                    # anonymous
+                    alternatives = "[]"
 
             if last_interact_timestamp is None:
                 last_interact_timestamp = -1
@@ -288,7 +307,15 @@ class Impression(SqliteDB):
                 impression = ""
 
             if title is None:
-                title = "stranger"
+                if id_hash == CREATOR_ID:
+                    # creator auto-correction
+                    title = "creator(admin)"
+                elif id_hash == CREATOR_GF_ID:
+                    # creator's girl auto-correction
+                    name = "besties(admin)"
+                else:
+                    # anonymous
+                    title = "stranger"
 
             if additional_json is None:
                 additional_json = {}
@@ -336,8 +363,8 @@ class Impression(SqliteDB):
 
 
 if __name__ == '__main__':
-    test_file = "test_v2.db"
-    test_uid = 222699744022
+    test_file = "test_v2.2.db"
+    test_uid = 2226997440
 
     test_db = Impression(test_file)
 
@@ -348,10 +375,21 @@ if __name__ == '__main__':
           f"last_ts: {a.last_interact_timestamp}\n"
           f"last_id: {a.last_interact_session_ID}\n"
           f"last_is_group: {a.last_interact_session_is_group}\n"
+          f"title: {a.title}\n",
           f"additions: {a.additional_json}")
 
     test_db.update_individual(test_uid, last_interact_timestamp=int(a.last_interact_timestamp + 3600),
                               last_interact_session_is_group=True)
+
+    a = test_db.get_individual(test_uid + 1)
+    print(f"name: {a.name}\n"
+          f"id: {a.id}\n"
+          f"alternatives: {a.alternatives}\n"
+          f"last_ts: {a.last_interact_timestamp}\n"
+          f"last_id: {a.last_interact_session_ID}\n"
+          f"last_is_group: {a.last_interact_session_is_group}\n"
+          f"title: {a.title}\n"
+          f"additions: {a.additional_json}")
 
     print('listing all users in db: {}'.format(test_db.list_individuals()))
 

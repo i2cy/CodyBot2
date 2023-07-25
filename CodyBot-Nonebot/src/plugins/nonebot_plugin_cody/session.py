@@ -17,9 +17,6 @@ from .api import get_chat_response, CODY_HEADER, ANONYMOUS_HUMAN_HEADER
 from .userdata import Impression, ImpressionFrame
 from .memory import Memory
 
-CREATOR_ID = "80b3456f5f8398d38d659e2d2930e26544a61f0482180d00161cae78171d8d60"
-CREATOR_GF_ID = "fa06dac2564d6b1995467e83c31e270b69de53160ce4c26ca913e28ea3a8669a"
-
 API_INDEX = -1
 INVALID_APIs = []
 PUNCTUATION_SETS = {"。", "！", "？", ".", "!", "?", ";", "；", "……", "~", "~"}
@@ -550,6 +547,12 @@ class SessionGPT35:
 
         # TODO: 重新构建此GPT反馈获取函数
 
+        # get impression data
+        frame = self.impression.get_individual(user_id)
+
+        self.is_busy = False  # release busy flag
+
+        # OLD SCRIPTS
         if user_id is not None or user_name is not None:
             if user_id == CREATOR_ID:
                 user_name = "Icy"
