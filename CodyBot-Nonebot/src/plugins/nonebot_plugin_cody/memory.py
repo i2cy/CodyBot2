@@ -29,6 +29,7 @@ class ExtraTypes:
     user_msg: int = 0
     user_msg_info: int = 1
     cody_msg: int = 2
+    sys_msg: int = 3
 
 
 class Memory(BaseModel):

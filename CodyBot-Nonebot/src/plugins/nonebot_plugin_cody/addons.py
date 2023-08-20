@@ -7,14 +7,15 @@
 
 import time
 import json
+import asyncio
 from nonebot import get_bot, logger
 from nonebot.adapters.onebot.v11 import Bot, MessageSegment, Message
 from .session import SessionGPT35
-from .api import get_chat_response, GPTResponse
+from .api import get_chat_response
 from .config import APIKEY_LIST
 from .memory import Memory, ExtraTypes
-from .utils import TimeStamp
-from . import get_user_session
+from .utils import TimeStamp, GPTResponse, extract_json_and_purge_cody_response
+from . import get_user_session, get_group_session
 
 
 class AddonBase:
@@ -60,8 +61,6 @@ class AddonBase:
         """
         pass
 
-
-# TODO: create an default addon that used for updating user name, decode reach command, update impressions
 
 class DefaultsAddon(AddonBase):
     """
@@ -110,6 +109,28 @@ class DefaultsAddon(AddonBase):
             additional_json=frame.additional_json
         )
 
+    def set_feedback_required(self, activate: bool, user_id: int, feedback_source: SessionGPT35, ts: float,
+                              feecback_topic: str):
+        """
+        set private session of specified user feedback required active or disabled
+        :param feecback_topic: str
+        :param ts: float, timestamp
+        :param activate: bool
+        :param user_id: int
+        :param feedback_source: SessionGPT35
+        :return:
+        """
+        # get user impression data frame
+        frame = self.session.impression.get_individual(user_id)
+
+        flag_name = f'FBR_{self.session.id}'
+        # update flag
+        frame.additional_json.update({flag_name: {'source': feedback_source.id,
+                                                  'is_group': feedback_source.is_group,
+                                                  'active': activate,
+                                                  'timestamp': ts,
+                                                  'topic': feecback_topic}})
+
     def set_active(self, user_id: int):
         """
         set a user conversation status to active which means 'not silenced' in current session
@@ -137,23 +158,7 @@ class DefaultsAddon(AddonBase):
         # copy message content from session.conversation
         msg = self.session.conversation.cody_msg
 
-        json_start_cnt = 0
-        json_stop_cnt = 0
-        json_range = [0, 0]
-        # locate the start and tail of json text
-        for i, ele in enumerate(msg):
-            if ele == "{":
-                if json_start_cnt == 0:
-                    json_range[0] = i
-                json_start_cnt += 1
-            elif ele == "}":
-                json_stop_cnt += 1
-                if json_stop_cnt == json_start_cnt:
-                    json_range[1] = i + 1
-                    break
-
-        # copy json text
-        json_text = msg[json_range[0]:json_range[1]]
+        json_text, purged = extract_json_and_purge_cody_response(msg)
 
         # decode and transfer
         ret = None
@@ -193,6 +198,33 @@ class DefaultsAddon(AddonBase):
         ret = [ele for ele in users if ele not in users_with_impression]
 
         return ret
+
+    def extract_latest_msg_segment_to_summary(self, time_sec: float = 300, max_msg_pair_count: int = 10) -> str:
+        """
+        extract latest message pairs
+        :param time_sec: float
+        :param max_msg_pair_count: int
+        :return: str
+        """
+        now = time.time()
+        ret = ""
+        seg_count = 0
+        for i, ele in enumerate(self.session.conversation.conversation_extra[::-1]):
+            if now - ele['timestamp'] > time_sec:
+                # break if message timestamp too old
+                break
+
+            if ele['type'] == ExtraTypes.user_msg:
+                # in case message type is user's input
+                ret += f"{ele['name']}: {self.session.conversation.conversation[i]}\n"
+
+            elif ele['type'] == ExtraTypes.cody_msg:
+                # in case message type is cody's feedback
+                ret += f"Cody: {extract_json_and_purge_cody_response(self.session.conversation.conversation[i])[1]}"
+
+            if seg_count >= max_msg_pair_count * 2:
+                # break if messages exceeded maximum size
+                break
 
     def user_msg_post_proc_callback(self):
         """
@@ -261,6 +293,107 @@ class DefaultsAddon(AddonBase):
             last_interact_session_is_group=is_group,
             last_interact_timestamp=int(ts)
         )
+
+        # update user conversation status for 'FBR'(feed back required) flag
+        if not self.session.is_group:
+            # update only if current session is not group session
+            frame = self.session.impression.get_individual(self.session.id)
+            # fetch all FBR flags
+            all_FBR = [ele for ele in frame.additional_json.keys() if 'FBR_' in ele]
+
+            for fbr in all_FBR:
+                # process all FBR flags one-by-one
+                is_FBR = {'active': False}
+                flag_name = fbr
+                if flag_name in frame.additional_json:
+                    # fetch flag in impression database if flag exists
+                    is_FBR = frame.additional_json[flag_name]
+
+                if is_FBR['active']:
+                    if time.time() - is_FBR['timestamp'] > 3600 * 24 * 2:
+                        # remove FBR flag if user is not responding in 2 days
+                        frame.additional_json.pop(flag_name)
+                        self.session.impression.update_individual(self.session.id,
+                                                                  additional_json=frame.additional_json)
+                        continue
+
+                    # check and update feedback in other session
+                    duration = time.time() - is_FBR['timestamp']
+                    feedback_summary = self.extract_latest_msg_segment_to_summary(duration, max_msg_pair_count=20)
+                    if feedback_summary == "":
+                        # skip if no summary
+                        continue
+
+                    # fetch target session
+                    if is_FBR['is_group']:
+                        # fetch target group session
+                        session = get_group_session(is_FBR['source'])
+                    else:
+                        # fetch target user session
+                        session = get_group_session(is_FBR['source'])
+
+                    # check and toggle busy flag of target session
+                    session.busy_check()
+                    session.is_busy = True
+
+                    # locating index of target session's memory recall info segment
+                    info_i = -1
+                    for i, ele in enumerate(session.conversation.conversation_extra):
+                        if (ele['type'] == ExtraTypes.sys_msg
+                                and 'sub_type' in ele and ele['sub_type'] == 'reach_feedback'):
+                            # fetch feedback system info message segment
+                            if ele['timestamp'] == is_FBR['timestamp']:
+                                # record feedback target index
+                                info_i = i
+                                self.log("successfully located target feedback index ({}) in session {}".format(
+                                    info_i, session.id
+                                ))
+
+                    if info_i == -1:
+                        # when target feedback system info segment is not found (forgotten by system)
+                        frame.additional_json.pop(flag_name)
+                        self.session.impression.update_individual(self.session.id,
+                                                                  additional_json=frame.additional_json)
+                        session.is_busy = False
+                        continue
+
+                    # update target feedback system info
+                    session.conversation.conversation[info_i] = (f"feedbacks from {current_user_name} after you reached"
+                                                                 f" him:\n{feedback_summary}")
+
+                    # using openai to determine whether if topic of remind is close
+                    payload = [
+                        {'role': 'system',
+                         'content': "You will receive a sequence of conversation as follows, determine whether if the "
+                                    "topic related to '{}' is ended, return in JSON format, e.g. {}, {}".format(
+                             is_FBR['topic'], "'ended': 0", "'ended': 1")},
+                        {'role': 'user',
+                         'content': feedback_summary}
+                    ]
+
+                    # try to generate response from openai
+                    for i in APIKEY_LIST:
+                        try:
+                            key = APIKEY_LIST.get_api()
+                            feedback, status = get_chat_response(key, payload,
+                                                                 temperature=0.7, presence_p=0.0, frequency_p=0.0)
+                            if status:
+                                # try to decode json text
+                                feedback_json, purged = extract_json_and_purge_cody_response(feedback)
+                                feedback_json = json.loads(feedback_json)
+                                if feedback_json['ended'] == 1:
+                                    # remove FBR flag
+                                    frame.additional_json.pop(flag_name)
+                                    self.session.impression.update_individual(self.session.id,
+                                                                              additional_json=frame.additional_json)
+                                    session.is_busy = False
+                                    continue
+                        except Exception as err:
+                            self.log(
+                                f"error while trying to get feedback status from openai, using key \"{key}\", {err}")
+
+                    # release busy flag
+                    session.is_busy = False
 
         # get users without impression
         no_imp_users = self.extract_user_id_with_no_impression_description()
@@ -395,25 +528,80 @@ class DefaultsAddon(AddonBase):
                 if "reach_reason" not in res:
                     # skip reach command without reach_reason keyword
                     continue
-                # preprocessing username
+                # preprocessing username, reason, latest 10 messages in 10 min
                 username = res['reach'].upper()
+                reach_reason = res['reach_reason']
+                addtional_msg = self.extract_latest_msg_segment_to_summary()
 
                 matched_frames = []
                 # matching database
                 for ele in self.session.impression.list_individuals():
                     frame = self.session.impression.get_individual(ele)
-                    if frame.name.upper() == username:
+                    if frame.name.upper() == username and self.session.id != frame.id:
                         matched_frames.append(frame)
 
                 if len(matched_frames) == 1:
                     # matched one, get target session
                     session = get_user_session(matched_frames[0].id)
-                    # TODO: finish this reach processing, basic logic:
-                    #  1. get target session
-                    #  2. modify target session conversation(add system prompts), add busy flag
-                    #  3. generate list to get Cody's response
-                    #  4. generate
-                    session = get_user_session(matched_frames[0].id)
+
+                    # busy check target session
+                    session.busy_check()
+                    session.is_busy = True
+
+                    # modify target session
+                    session.conversation.conversation.append({'role': 'system',
+                                                              'content': f"You need to form a message for "
+                                                                         f"\"{username}\" with following reason:\n"
+                                                                         f"{reach_reason}\n"
+                                                                         f"additional information from other chat "
+                                                                         f"session as follows:\n{addtional_msg}"
+                                                              })
+                    session.conversation.conversation_extra.append({
+                        'type': ExtraTypes.sys_msg,
+                        'sub_type': 'reach_call',
+                        'timestamp': timestamp
+                    })
+
+                    # add feedback info system message segment in current session
+                    self.session.conversation.conversation_extra.append({
+                        'type': ExtraTypes.sys_msg,
+                        'sub_type': 'reach_feedback',
+                        'timestamp': timestamp
+                    })
+                    self.session.conversation.conversation.append({
+                        'role': 'system',
+                        'content': f'feedbacks from {username} after you reached him:\nNone'
+                    })
+
+                    status = False
+                    # try to generate response from openai
+                    for i in APIKEY_LIST:
+                        try:
+                            key = APIKEY_LIST.get_api()
+                            feedback, status = get_chat_response(key, session.conversation.to_list())
+                            if status:
+                                # add to conversation history if succeed
+                                session.conversation.add_cody_message(feedback)
+                        except Exception as err:
+                            self.log(f"error while using key \"{key}\", {err}")
+
+                    # notify target user through api
+                    if status:
+                        # notify user if succeed
+                        try:
+                            json_text, purged = extract_json_and_purge_cody_response(feedback)
+                            async_object = self.session.bot.send_private_msg(user_id=matched_frames[0].id,
+                                                                             message=purged)
+                            asyncio.run(async_object)
+
+                            # set FBR flag active in target user impression database
+                            self.set_feedback_required(True, matched_frames[0].id, self.session,
+                                                       ts=timestamp.timestamp, feecback_topic=reach_reason)
+                        except Exception as err:
+                            self.log(f"error while sending message though nonebot API, {err}")
+
+                    # release busy flag of target session
+                    session.is_busy = False
 
                 elif len(matched_frames) > 1:
                     # matched multiple, ask cody to contact which
@@ -423,8 +611,6 @@ class DefaultsAddon(AddonBase):
                     #  3. if Cody is not sure, ask user to contact which
                     #  4. get target session or cancel
                     pass
-
-
 
 
 # TODO: reconstruct ReminderAddon to fit new addon base

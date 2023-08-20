@@ -6,6 +6,7 @@
 # Created on: 2023/4/30
 
 import time
+from copy import copy
 from datetime import datetime, timedelta
 from typing import Union
 from pydantic import BaseModel
@@ -194,8 +195,41 @@ class TimeStamp(BaseModel):
         return duration_text
 
 
+def extract_json_and_purge_cody_response(response: GPTResponse) -> (str, GPTResponse):
+    """
+    extract json object and purge response with only plain text
+    :param response: GPTResponse
+    :return: (str extracted_json_text, GPTResponse purged_response)
+    """
+    response = GPTResponse(**response.dict())
+
+    json_start_cnt = 0
+    json_stop_cnt = 0
+    json_range = [0, 0]
+    # locate the start and tail of json text
+    for i, ele in enumerate(response):
+        if ele == "{":
+            if json_start_cnt == 0:
+                json_range[0] = i
+            json_start_cnt += 1
+        elif ele == "}":
+            json_stop_cnt += 1
+            if json_stop_cnt == json_start_cnt:
+                json_range[1] = i + 1
+                break
+
+    # copy json text
+    json_text = response[json_range[0]:json_range[1]]
+
+    # purge json text and blank space
+    response.message = response.message[json_range[1]:].strip()
+
+    return json_text, response
+
+
 if __name__ == '__main__':
     ts = TimeStamp(time.time())
+    ts_copy = TimeStamp(**ts.dict())
     print("current date time:", ts)
     for i in range(40):
         if i < 18:
@@ -206,3 +240,4 @@ if __name__ == '__main__':
             ts -= 3600 * i * 2 * i
         print("offset time:", ts)
         print("till now:", ts.till_now_str())
+    print("backup ts:", ts_copy)
